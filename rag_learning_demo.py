@@ -1,19 +1,44 @@
+# Topics 5-12 and 16: local RAG demo with SQLite, chunks, vectors, Ollama, and streaming.
+
+# Predefined library: math provides square root for cosine similarity.
 import math
+
+# Predefined library: json converts between JSON text and Python dictionaries.
 import json
+
+# Predefined library: sqlite3 stores demo PRs and chunk embeddings locally.
 import sqlite3
+
+# Predefined library: sys exits cleanly when local LLM errors happen.
 import sys
+
+# Predefined library: urllib.error handles HTTP errors from Ollama.
 import urllib.error
+
+# Predefined library: urllib.request calls the local Ollama HTTP API.
 import urllib.request
+
+# Predefined class: Counter stores simple word-count embeddings.
 from collections import Counter
 
 
+# Demo setting: local SQLite database file created when the script runs.
 DB_NAME = "prociq_learning.db"
+
+# Demo setting: local Ollama model used as the actual local LLM.
 OLLAMA_MODEL = "llama3.2:1b"
+
+# Topic 8: Vector similarity search - minimum score required to trust a chunk.
+MIN_SIMILARITY = 0.10
+
+# Topic 8: Vector similarity search - remove weak matches before sending context to LLM.
 STOP_WORDS = {
     "a", "an", "and", "any", "are", "as", "at", "be", "because", "before",
     "can", "does", "for", "from", "has", "is", "it", "of", "on", "or",
     "the", "this", "to", "when", "why", "with",
 }
+
+# Topic 6: Embeddings concept - normalize similar/typo words before comparison.
 WORD_NORMALIZATION = {
     "prerequicities": "prerequisites",
     "prerequisites": "requires",
@@ -23,6 +48,7 @@ WORD_NORMALIZATION = {
     "needs": "requires",
 }
 
+# Demo source text: small policy document used for chunking and retrieval.
 POLICY_TEXT = """
 IT purchases above 100000 require Finance approval before the purchase request can move forward.
 Office supplies below 5000 can be auto-approved when the supplier is already approved.
@@ -31,10 +57,12 @@ PO cancellation requires a cancellation reason code and an audit entry.
 """
 
 
+# Topic 5: Database basics - connect to local SQLite database.
 def connect_db():
     return sqlite3.connect(DB_NAME)
 
 
+# Topic 5: Database basics - create normal DB tables and a simple vector-table demo.
 def setup_database(connection):
     connection.execute("""
         CREATE TABLE IF NOT EXISTS purchase_requests (
@@ -60,6 +88,7 @@ def setup_database(connection):
     connection.commit()
 
 
+# Topic 5: Database basics - insert fixed demo PR data.
 def seed_purchase_request(connection):
     connection.execute("""
         INSERT OR REPLACE INTO purchase_requests
@@ -77,6 +106,7 @@ def seed_purchase_request(connection):
     connection.commit()
 
 
+# Topic 7: Text chunking strategies - split policy text into sentence chunks.
 def chunk_text(text):
     sentences = [
         sentence.strip()
@@ -94,6 +124,7 @@ def chunk_text(text):
     return chunks
 
 
+# Topic 6: Embeddings concept - create a simple word-count embedding for learning.
 def create_embedding(text):
     cleaned_text = text.lower()
     for character in ".,?;:()":
@@ -108,6 +139,7 @@ def create_embedding(text):
     return Counter(words)
 
 
+# Topic 8: Vector similarity search - choose a clean retrieval query.
 def build_retrieval_query(question, pr):
     policy_only_keywords = {"supplier", "onboarding", "policy", "prerequisites"}
     question_words = set(create_embedding(question))
@@ -123,6 +155,7 @@ def build_retrieval_query(question, pr):
     )
 
 
+# Topic 9: Vector databases - convert embedding to text so SQLite can store it.
 def serialize_embedding(embedding):
     return " ".join(
         f"{word}:{count}"
@@ -130,6 +163,7 @@ def serialize_embedding(embedding):
     )
 
 
+# Topic 9: Vector databases - convert stored text back into an embedding.
 def deserialize_embedding(embedding_text):
     result = Counter()
     if not embedding_text:
@@ -142,6 +176,7 @@ def deserialize_embedding(embedding_text):
     return result
 
 
+# Topic 8: Vector similarity search - compare two simple embeddings.
 def cosine_similarity(left, right):
     common_words = set(left) & set(right)
     dot_product = sum(left[word] * right[word] for word in common_words)
@@ -155,6 +190,7 @@ def cosine_similarity(left, right):
     return dot_product / (left_length * right_length)
 
 
+# Topics 7, 8, 9: chunk policy text, embed chunks, and store them.
 def seed_policy_chunks(connection):
     connection.execute("DELETE FROM policy_chunks")
 
@@ -175,6 +211,7 @@ def seed_policy_chunks(connection):
     connection.commit()
 
 
+# Topic 5: Database basics - read structured PR data from SQL table.
 def get_purchase_request(connection, pr_id):
     cursor = connection.execute("""
         SELECT pr_id, title, department, item, amount, status
@@ -196,6 +233,7 @@ def get_purchase_request(connection, pr_id):
     }
 
 
+# Topics 8, 9: search stored chunk embeddings and return closest chunks.
 def search_policy_chunks(connection, question, top_k=2):
     question_embedding = create_embedding(question)
 
@@ -220,7 +258,8 @@ def search_policy_chunks(connection, question, top_k=2):
     return results[:top_k]
 
 
-def generate_answer_with_local_llm(pr, chunks, question, include_pr=True):
+# Topics 10, 12, 16: use local LLM with RAG context and stream answer tokens.
+def stream_answer_with_local_llm(pr, chunks, question, include_pr=True):
     context = "\n".join(
         f"- {chunk['text']} "
         f"(Source: {chunk['document_name']}, chunk {chunk['chunk_index']})"
@@ -256,7 +295,7 @@ Policy context:
     payload = {
         "model": OLLAMA_MODEL,
         "prompt": prompt,
-        "stream": False,
+        "stream": True,
         "options": {
             "temperature": 0.1,
         },
@@ -271,8 +310,17 @@ Policy context:
 
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            return result["response"].strip()
+            for line in response:
+                if not line.strip():
+                    continue
+
+                event = json.loads(line.decode("utf-8"))
+                if event.get("done"):
+                    break
+
+                token = event.get("response", "")
+                if token:
+                    yield token
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
         raise RuntimeError(
@@ -288,6 +336,7 @@ Policy context:
         raise RuntimeError("Local LLM response could not be read correctly.") from error
 
 
+# Topic 12: RAG architecture - retrieve DB data, retrieve chunks, then call LLM.
 def main():
     connection = connect_db()
     setup_database(connection)
@@ -295,7 +344,7 @@ def main():
     seed_policy_chunks(connection)
 
     pr = get_purchase_request(connection, 101)
-    question = "Hi"
+    question = "Why does this Cisco router PR need Finance approval?"
     retrieval_query = build_retrieval_query(question, pr)
     include_pr_context = retrieval_query != question
     chunks = [
@@ -305,7 +354,7 @@ def main():
             retrieval_query,
             top_k=2 if include_pr_context else 1,
         )
-        if chunk["similarity"] > 0
+        if chunk["similarity"] >= MIN_SIMILARITY
     ]
     print("Question:")
     print(question)
@@ -328,21 +377,25 @@ def main():
         connection.close()
         return
 
+    print(f"\nStreaming local LLM answer using {OLLAMA_MODEL}:")
+    answer_parts = []
     try:
-        answer = generate_answer_with_local_llm(
+        for token in stream_answer_with_local_llm(
             pr,
             chunks,
             question,
             include_pr=include_pr_context,
-        )
+        ):
+            print(token, end="", flush=True)
+            answer_parts.append(token)
     except RuntimeError as error:
-        print("\nLocal LLM error:")
+        print("\n\nLocal LLM error:")
         print(error)
         connection.close()
         sys.exit(1)
 
-    print(f"\nLocal LLM answer using {OLLAMA_MODEL}:")
-    print(answer)
+    answer = "".join(answer_parts).strip()
+    print()
 
     print("\nRetrieved source used for the answer:")
     best_chunk = chunks[0]

@@ -2846,7 +2846,18 @@ To reduce hallucination:
 - keep temperature low for business workflows
 - validate important outputs
 
-## 7. LLM Vs Embedding Model
+## 7. Temperature
+
+Temperature controls how creative or random the LLM answer is.
+
+```text
+Low temperature, like 0.1 -> focused, predictable, better for policy/business answers.
+High temperature, like 0.9 -> creative, varied, higher risk of unsupported ideas.
+```
+
+For ProcIQ, use low temperature for approval reasoning, audit answers, and policy Q&A.
+
+## 8. LLM Vs Embedding Model
 
 Embedding model:
 
@@ -2867,7 +2878,7 @@ Embedding model finds the right policy.
 LLM explains the policy to the user.
 ```
 
-## 8. Simple Summary
+## 9. Simple Summary
 
 ```text
 LLM = AI model that understands and generates text.
@@ -3662,4 +3673,871 @@ Short version:
 ```text
 Background jobs handle slow work.
 Redis helps store fast temporary data and coordinate jobs.
+```
+
+---
+
+# Topic 15: API Design And Rate Limiting
+
+## 1. What Is API Design?
+
+API design means deciding how the backend endpoints should look and behave.
+
+Simple meaning:
+
+```text
+API design = making backend URLs clear, predictable, and easy to use.
+```
+
+In ProcIQ, APIs may support:
+
+- creating PRs
+- viewing PR details
+- approving PRs
+- uploading documents
+- checking background job status
+- asking Pico questions
+- reading notifications
+
+## 2. Good Endpoint Names
+
+Use clear resource names.
+
+Good:
+
+```text
+/purchase-requests
+/purchase-orders
+/suppliers
+/documents
+/jobs
+/notifications
+```
+
+Avoid unclear action-style names:
+
+```text
+/createPR
+/getPR
+/doApproval
+```
+
+## 3. HTTP Methods
+
+Use the right method for the action.
+
+```text
+GET     -> read data
+POST    -> create data or trigger an action
+PATCH   -> update some fields
+PUT     -> replace full data
+DELETE  -> delete data
+```
+
+ProcIQ examples:
+
+```text
+GET /purchase-requests/101
+```
+
+Read PR-101.
+
+```text
+POST /purchase-requests
+```
+
+Create a new PR.
+
+```text
+POST /purchase-requests/101/approve
+```
+
+Approve PR-101.
+
+```text
+POST /documents/upload
+```
+
+Upload a quote PDF.
+
+```text
+GET /jobs/job_123
+```
+
+Check background job status.
+
+## 4. Good Request And Response Shape
+
+Create PR request:
+
+```json
+{
+  "title": "Cisco Router Purchase",
+  "department": "IT",
+  "item": "Cisco Router",
+  "quantity": 3,
+  "amount": 240000
+}
+```
+
+Good response:
+
+```json
+{
+  "pr_id": 101,
+  "title": "Cisco Router Purchase",
+  "status": "Draft"
+}
+```
+
+Avoid vague responses:
+
+```json
+{
+  "ok": true,
+  "data": "done"
+}
+```
+
+The frontend should clearly know what happened.
+
+## 5. Important Status Codes
+
+```text
+200 OK                -> success
+201 Created           -> new resource created
+202 Accepted          -> accepted, processing later
+400 Bad Request       -> bad input
+401 Unauthorized      -> not logged in
+403 Forbidden         -> logged in but not allowed
+404 Not Found         -> record not found
+422 Validation Error  -> Pydantic validation failed
+429 Too Many Requests -> rate limit exceeded
+500 Server Error      -> backend bug
+```
+
+ProcIQ examples:
+
+```text
+POST /documents/upload -> 202 Accepted
+```
+
+Because document processing happens in background.
+
+```text
+GET /purchase-requests/999 -> 404 Not Found
+```
+
+Because PR-999 does not exist.
+
+```text
+POST /purchase-requests/101/approve -> 403 Forbidden
+```
+
+If the current user is not allowed to approve.
+
+## 6. Pagination And Filtering
+
+Do not return thousands of records at once.
+
+Good:
+
+```text
+GET /purchase-requests?page=1&page_size=20
+```
+
+Filter example:
+
+```text
+GET /purchase-requests?status=Draft&department=IT
+```
+
+ProcIQ needs this for:
+
+- PR lists
+- PO lists
+- notifications
+- audit logs
+- supplier lists
+
+## 7. What Is Rate Limiting?
+
+Rate limiting means controlling how many requests a user or client can make in a time period.
+
+Simple meaning:
+
+```text
+Rate limiting = stop too many requests.
+```
+
+Example:
+
+```text
+20 Pico chat requests per minute per user
+```
+
+If user sends more than allowed:
+
+```text
+429 Too Many Requests
+```
+
+## 8. Why Rate Limiting Matters
+
+Rate limiting protects the system from:
+
+- buggy frontend loops
+- accidental repeated clicks
+- attackers
+- expensive LLM overuse
+- database overload
+- file upload abuse
+
+AI endpoints need stricter limits because LLM calls are slower and more expensive.
+
+## 9. ProcIQ Rate Limit Examples
+
+```text
+GET /purchase-requests/101
+Limit: 300 requests/minute
+```
+
+```text
+POST /pico/chat
+Limit: 20 requests/minute
+```
+
+```text
+POST /documents/upload
+Limit: 10 uploads/minute
+```
+
+```text
+POST /login
+Limit: 5 attempts/minute
+```
+
+Different endpoints get different limits because cost and risk are different.
+
+## 10. Redis For Rate Limiting
+
+Redis is often used because it is fast.
+
+Example key:
+
+```text
+rate_limit:pico_chat:user_123
+```
+
+Value:
+
+```text
+18
+```
+
+Meaning:
+
+```text
+user_123 has used Pico chat 18 times in the current time window.
+```
+
+Flow:
+
+```text
+Request comes
+   -> identify user_id
+   -> increase Redis counter
+   -> if counter is within limit, allow
+   -> if counter is over limit, return 429
+```
+
+Blocked response:
+
+```json
+{
+  "detail": "Rate limit exceeded. Try again later."
+}
+```
+
+## 11. Simple Summary
+
+API design:
+
+```text
+Makes backend endpoints clear and predictable.
+```
+
+Rate limiting:
+
+```text
+Protects backend from too many requests.
+```
+
+ProcIQ short version:
+
+```text
+Good APIs make ProcIQ easy to use.
+Rate limits keep ProcIQ stable, safe, and cost-controlled.
+```
+
+---
+
+# Topic 17: Multi-Tenant Data Filtering
+
+## 1. What Is A Tenant?
+
+A tenant is one customer or company using the same SaaS product.
+
+Example:
+
+```text
+tenant_abc = ABC Manufacturing
+tenant_xyz = Global Pharma
+```
+
+ProcIQ may serve many tenants from the same application.
+
+## 2. What Is Multi-Tenant?
+
+Multi-tenant means:
+
+```text
+One application serves many customers.
+```
+
+But each customer must see only its own data.
+
+## 3. Why Tenant Filtering Matters
+
+Example table:
+
+| tenant_id | pr_id | title | amount |
+|---|---|---|---|
+| tenant_abc | 101 | Cisco Router Purchase | 240000 |
+| tenant_xyz | 101 | Office Chairs | 35000 |
+
+Both tenants can have `PR-101`.
+
+So this is unsafe:
+
+```sql
+SELECT * FROM purchase_requests
+WHERE pr_id = 101;
+```
+
+Safe query:
+
+```sql
+SELECT * FROM purchase_requests
+WHERE tenant_id = 'tenant_abc'
+AND pr_id = 101;
+```
+
+Simple rule:
+
+```text
+Always filter tenant-owned data by tenant_id.
+```
+
+## 4. API Example
+
+Unsafe API:
+
+```python
+def get_pr(pr_id: int):
+    return db.get_pr(pr_id)
+```
+
+Problem:
+
+```text
+User may see another tenant's PR if they guess the ID.
+```
+
+Safer API:
+
+```python
+def get_pr(pr_id: int, current_user: User):
+    return db.get_pr(
+        pr_id=pr_id,
+        tenant_id=current_user.tenant_id
+    )
+```
+
+Backend checks:
+
+```text
+pr_id + tenant_id
+```
+
+## 5. Vector Search Tenant Filtering
+
+Tenant filtering is also required in RAG and vector search.
+
+Vector chunk metadata:
+
+```json
+{
+  "text": "IT purchases above 100000 require Finance approval.",
+  "metadata": {
+    "tenant_id": "tenant_abc",
+    "document_type": "policy"
+  }
+}
+```
+
+Pico should search:
+
+```text
+policy chunks where tenant_id = current_user.tenant_id
+```
+
+Never search all tenants together.
+
+Bad result risk:
+
+```text
+Pico may answer using another customer's policy.
+```
+
+## 6. Redis And Jobs Need Tenant Too
+
+Bad Redis key:
+
+```text
+supplier_risk:55
+```
+
+Good Redis key:
+
+```text
+tenant_abc:supplier_risk:55
+```
+
+Bad job payload:
+
+```json
+{
+  "job_id": "job_123",
+  "file_path": "quote.pdf"
+}
+```
+
+Good job payload:
+
+```json
+{
+  "job_id": "job_123",
+  "tenant_id": "tenant_abc",
+  "file_path": "tenant_abc/uploads/quote.pdf"
+}
+```
+
+## 7. Where Tenant Filtering Is Needed
+
+Use tenant filtering in:
+
+- SQL queries
+- vector database searches
+- uploaded documents
+- background jobs
+- Redis cache keys
+- notifications
+- audit logs
+- Pico conversations
+- API endpoints
+
+## 8. Database Planning For ProcIQ
+
+For ProcIQ MVP, a practical plan is:
+
+```text
+Use one shared database with tenant_id on every tenant-owned table.
+```
+
+Example table design:
+
+```text
+id UUID PRIMARY KEY
+tenant_id UUID NOT NULL
+pr_number TEXT NOT NULL
+title TEXT
+amount NUMERIC
+status TEXT
+```
+
+Then enforce:
+
+```text
+tenant_id + pr_number must be unique.
+```
+
+Meaning:
+
+```text
+tenant_abc can have PR-101.
+tenant_xyz can also have PR-101.
+tenant_abc cannot have two PR-101s.
+```
+
+## 9. Single DB Vs Separate DB
+
+Single shared database with `tenant_id`:
+
+```text
+good for MVP
+lower cost
+easier migrations
+easier reporting
+simpler operations
+```
+
+Separate database per tenant:
+
+```text
+stronger isolation
+useful for very large enterprise customers
+better for strict compliance needs
+more expensive and complex
+```
+
+Recommended approach:
+
+```text
+Start with shared DB + tenant_id.
+Design so large tenants can move to dedicated DB later if needed.
+```
+
+## 10. Simple Summary
+
+```text
+Tenant = one customer/company.
+Multi-tenant = one app serving many customers.
+Tenant filtering = always read/search/process only current tenant's data.
+```
+
+ProcIQ rule:
+
+```text
+Never search, read, cache, or process tenant-owned data without tenant_id.
+```
+
+Short version:
+
+```text
+tenant_id is the safety boundary between customers.
+```
+
+---
+
+# Topic 18: Logging And Monitoring
+
+## 1. Simple Meaning
+
+Logging and monitoring help us understand what the application is doing.
+
+```text
+Logging = record what happened.
+Monitoring = watch system health over time.
+Alerting = notify humans when something is wrong.
+```
+
+## 2. What Is Logging?
+
+Logging means writing important events into logs.
+
+Example:
+
+```text
+2026-05-12 10:30:01 PR-101 created by user_123
+```
+
+Logs help answer:
+
+```text
+What happened?
+When did it happen?
+Who triggered it?
+Did it fail?
+Why did it fail?
+```
+
+## 3. Log Levels
+
+```text
+DEBUG    -> detailed developer information
+INFO     -> normal important event
+WARNING  -> unusual but not fatal
+ERROR    -> operation failed
+CRITICAL -> serious system failure
+```
+
+ProcIQ examples:
+
+```text
+INFO: PR-101 created
+INFO: PO-5001 dispatched
+WARNING: Supplier risk service slow
+ERROR: ERP sync failed for PO-5001
+CRITICAL: Database unavailable
+```
+
+## 4. What To Log In ProcIQ
+
+Good events to log:
+
+- PR created/submitted
+- approval completed
+- PDF uploaded
+- background job started/completed/failed
+- ERP sync success/failure
+- Pico request started/completed
+- rate limit exceeded
+- tenant access denied
+
+Example structured log:
+
+```json
+{
+  "level": "INFO",
+  "event": "purchase_request_created",
+  "tenant_id": "tenant_abc",
+  "pr_id": 101,
+  "user_id": "user_123"
+}
+```
+
+## 5. What Not To Log
+
+Avoid logging sensitive data:
+
+- passwords
+- access tokens
+- bank account numbers
+- full supplier tax IDs
+- private document text
+- full confidential LLM prompts
+
+Bad:
+
+```text
+User password is abc@123
+```
+
+Good:
+
+```text
+Login failed for user_id=user_123
+```
+
+## 6. What Is Monitoring?
+
+Monitoring means continuously watching application health.
+
+It answers:
+
+```text
+Is the system healthy?
+Is it slow?
+Are errors increasing?
+Is database slow?
+Are background jobs stuck?
+```
+
+## 7. Metrics
+
+Metrics are numbers tracked over time.
+
+Examples:
+
+- request count
+- error count
+- average response time
+- CPU usage
+- memory usage
+- database query time
+- background job queue size
+- LLM response time
+- vector search latency
+
+ProcIQ metrics:
+
+```text
+PR creation count per hour
+Pico chat latency
+PDF processing time
+ERP sync failure count
+background jobs pending
+notification delivery failure count
+```
+
+## 8. Alerting
+
+Alerting means notifying the team when something is wrong.
+
+Examples:
+
+```text
+ERP sync failure rate > 10%
+Pico response time > 20 seconds
+background job queue > 500
+database CPU > 90%
+API error rate > 5%
+```
+
+Alerts may go to:
+
+```text
+Slack
+Teams
+email
+PagerDuty
+monitoring dashboard
+```
+
+## 9. Real ProcIQ Example
+
+ERP sync starts failing.
+
+Log:
+
+```json
+{
+  "level": "ERROR",
+  "event": "erp_sync_failed",
+  "tenant_id": "tenant_abc",
+  "po_id": 5001,
+  "error": "SAP timeout"
+}
+```
+
+Metric:
+
+```text
+ERP sync failure rate increased from 1% to 25%.
+```
+
+Alert:
+
+```text
+ERP sync failure rate above threshold.
+```
+
+Team investigates the SAP connector.
+
+## 10. Logging Background Jobs
+
+For background jobs, log each important stage.
+
+Example:
+
+```text
+job started
+text extraction started
+text extraction completed
+embedding generation started
+vector DB insert completed
+draft PR created
+job completed
+```
+
+If the job fails, include:
+
+```text
+job_id
+tenant_id
+file_id
+failed stage
+error message
+```
+
+## 11. Logging RAG And LLM
+
+For RAG/LLM, log useful metadata:
+
+```text
+question received
+tenant_id
+retrieved chunk IDs
+similarity scores
+LLM latency
+answer generated
+```
+
+Avoid logging full sensitive document text unless company policy allows it.
+
+Good log:
+
+```json
+{
+  "event": "pico_answer_generated",
+  "tenant_id": "tenant_abc",
+  "retrieved_chunks": ["policy_chunk_001"],
+  "llm_latency_ms": 2400
+}
+```
+
+## 12. Common Tools
+
+Logging:
+
+```text
+Python logging
+Loguru
+structlog
+ELK stack: Elasticsearch, Logstash, Kibana
+```
+
+Monitoring and metrics:
+
+```text
+Prometheus
+Grafana
+Datadog
+New Relic
+CloudWatch
+Azure Monitor
+```
+
+Tracing:
+
+```text
+OpenTelemetry
+Jaeger
+Zipkin
+```
+
+Error tracking:
+
+```text
+Sentry
+Rollbar
+Bugsnag
+```
+
+## 13. Simple Summary
+
+```text
+Logging = what happened?
+Monitoring = how healthy is the system?
+Alerting = who should be notified when something is wrong?
+```
+
+ProcIQ use:
+
+```text
+track PR creation
+track approvals
+track PDF jobs
+track ERP sync
+track Pico/RAG answers
+track errors
+track performance
+```
+
+Short version:
+
+```text
+Logs help debug past events.
+Monitoring helps catch live problems.
 ```
