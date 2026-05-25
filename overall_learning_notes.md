@@ -27,6 +27,35 @@ ProcIQ is an intake-to-PO procurement platform. It handles purchase requests, ap
 19. Performance optimization
 20. Deployment with Docker and CI/CD
 
+## Additional Topics To Learn
+
+These are useful before or during development, especially for AI/backend work.
+
+21. Python fundamentals refresh
+22. Git and GitHub workflow
+23. Python project structure
+24. Environment variables and secrets
+25. Testing basics with pytest
+26. FastAPI dependency injection
+27. Authentication basics: JWT, session, API key
+28. Authorization and RBAC
+29. Database migrations with Alembic
+30. LangChain basics
+31. LangGraph basics
+32. MCP fundamentals
+33. LLM tool calling / function calling
+34. Structured LLM outputs with JSON schema
+35. RAG evaluation
+36. Hallucination detection
+37. Guardrails and AI safety
+38. Prompt versioning
+39. Citation and source grounding
+40. Re-ranking search results
+41. Hybrid search: keyword + vector
+42. Document extraction: OCR, scanned PDFs, tables
+43. Error handling, timeouts, and retries
+44. Production folder structure
+
 ---
 
 # Topic 1: Async Programming
@@ -2907,6 +2936,239 @@ Backend and databases provide truth.
 
 ---
 
+# Topic 11: Functions And Decorators
+
+## 1. What Is A Function?
+
+A function is a named block of code that does one specific job.
+
+Simple meaning:
+
+```text
+Function = give a task a name so you can reuse it.
+```
+
+Real life example:
+
+Every morning you make tea using the same steps. Instead of repeating those steps every time, you name them "make tea" and call that name whenever needed. That is a function.
+
+## 2. Function Without Input
+
+```python
+def make_tea():
+    print("boil water")
+    print("add tea bag")
+    print("add sugar")
+
+make_tea()
+make_tea()
+```
+
+Output:
+
+```text
+boil water
+add tea bag
+add sugar
+boil water
+add tea bag
+add sugar
+```
+
+The steps are written once. Called twice. No repetition.
+
+## 3. Function With Input
+
+```python
+def make_tea(sugar_spoons):
+    print("boil water")
+    print("add tea bag")
+    print(f"add {sugar_spoons} spoons of sugar")
+
+make_tea(2)
+make_tea(0)
+```
+
+Output:
+
+```text
+add 2 spoons of sugar
+add 0 spoons of sugar
+```
+
+The function behaves differently based on what you pass in.
+
+## 4. Function With Output
+
+```python
+def add(a, b):
+    return a + b
+
+result = add(3, 5)
+print(result)
+```
+
+Output:
+
+```text
+8
+```
+
+`return` sends the result back to whoever called the function.
+
+## 5. Real ProcIQ Example
+
+Without function:
+
+```python
+print("Checking budget for Finance...")
+time.sleep(2)
+print("Budget OK")
+
+print("Checking budget for IT...")
+time.sleep(2)
+print("Budget OK")
+```
+
+With function:
+
+```python
+def check_budget(department):
+    print(f"Checking budget for {department}...")
+    time.sleep(2)
+    return "Budget OK"
+
+result = check_budget("Finance")
+result = check_budget("IT")
+```
+
+Same logic. No repetition. Easy to update.
+
+## 6. What Is A Decorator?
+
+A decorator adds extra behavior to a function without changing the function itself.
+
+Real life example:
+
+You have a regular door. You add a security camera above it. The door still works the same way. But now it also records who enters. The camera is the decorator.
+
+## 7. Decorator Without Framework
+
+```python
+def logger(func):
+    def wrapper():
+        print("Function is starting...")
+        func()
+        print("Function finished.")
+    return wrapper
+
+@logger
+def greet():
+    print("Hello!")
+
+greet()
+```
+
+Output:
+
+```text
+Function is starting...
+Hello!
+Function finished.
+```
+
+`@logger` is the decorator. It wraps `greet()` with extra steps before and after.
+
+## 8. How Decorator Works Step By Step
+
+Without `@logger`:
+
+```text
+greet() -> prints Hello
+```
+
+With `@logger`:
+
+```text
+greet() -> logger runs -> prints starting -> prints Hello -> prints finished
+```
+
+The function itself did not change. The decorator added the outer behavior.
+
+## 9. Real ProcIQ Example
+
+A decorator that checks if the user is logged in before any function runs:
+
+```python
+def require_login(func):
+    def wrapper(user, *args, **kwargs):
+        if not user.is_logged_in:
+            return {"error": "You must be logged in."}
+        return func(user, *args, **kwargs)
+    return wrapper
+
+@require_login
+def get_pr_details(user, pr_id):
+    return {"pr_id": pr_id, "title": "Cisco Router Purchase"}
+```
+
+Every function using `@require_login` checks login automatically. No need to repeat that check inside every function.
+
+## 10. Why Decorators Matter In LangChain And MCP
+
+MCP uses decorators to register tools.
+
+```python
+@mcp.tool()
+def get_pr_status(pr_id: str) -> str:
+    """Get the current status of a purchase request."""
+    return f"PR-{pr_id}: In Approval"
+```
+
+Without `@mcp.tool()`, this is just a regular Python function.
+
+With `@mcp.tool()`, the MCP server registers it and an AI model can call it.
+
+FastAPI uses the same pattern:
+
+```python
+@app.get("/purchase-requests/{pr_id}")
+def get_purchase_request(pr_id: int):
+    return {"pr_id": pr_id}
+```
+
+`@app.get(...)` registers the function as an API endpoint.
+
+## 11. Simple Summary
+
+Function:
+
+```text
+Name a task. Reuse it. Avoid repetition.
+```
+
+Decorator:
+
+```text
+Wrap a function with extra behavior without changing the function.
+```
+
+Real use in ProcIQ and LangChain/MCP:
+
+```text
+@require_login    -> add login check to any function
+@app.get(...)     -> register any function as FastAPI endpoint
+@mcp.tool()       -> register any function as AI tool
+```
+
+Short version:
+
+```text
+Decorators = reusable wrappers that change how a function behaves from the outside.
+```
+
+---
+
 # Topic 12: RAG Architecture
 
 ## 1. What Is RAG?
@@ -4540,4 +4802,183 @@ Short version:
 ```text
 Logs help debug past events.
 Monitoring helps catch live problems.
+```
+
+---
+
+# Topic 19: pip And Virtual Environments
+
+## 1. What Is pip?
+
+pip is the tool used to download and install Python packages.
+
+Simple meaning:
+
+```text
+pip = app store for Python libraries.
+```
+
+You find a package online, install it with pip, and use it in your project.
+
+## 2. Installing A Package
+
+```bash
+pip install langchain
+pip install langchain-anthropic
+pip install mcp
+```
+
+After this, your Python code can import and use those packages.
+
+Without `pip install langchain`:
+
+```python
+from langchain_anthropic import ChatAnthropic
+# Error: No module named 'langchain_anthropic'
+```
+
+After `pip install langchain-anthropic`:
+
+```python
+from langchain_anthropic import ChatAnthropic
+# Works
+```
+
+## 3. What Is A Virtual Environment?
+
+A virtual environment is an isolated box for a project's packages.
+
+Simple meaning:
+
+```text
+Virtual environment = separate package storage per project.
+```
+
+## 4. Why Virtual Environments Are Needed
+
+Real problem:
+
+```text
+ProcIQ project needs langchain version 0.1
+LangChain MCP project needs langchain version 0.3
+```
+
+If both are installed globally:
+
+```text
+One overwrites the other.
+One project breaks.
+```
+
+With virtual environments:
+
+```text
+ProcIQ project  -> its own box -> langchain 0.1 inside
+MCP project     -> its own box -> langchain 0.3 inside
+```
+
+Each project is isolated. No conflict.
+
+## 5. How To Create And Use
+
+Step 1: go to project folder:
+
+```bash
+cd d:\learning
+```
+
+Step 2: create virtual environment:
+
+```bash
+python -m venv venv
+```
+
+This creates a `venv` folder inside your project.
+
+Step 3: activate it on Windows:
+
+```bash
+venv\Scripts\activate
+```
+
+You will see this in the terminal after activation:
+
+```text
+(venv) d:\learning>
+```
+
+The `(venv)` prefix means the virtual environment is active.
+
+Step 4: install packages inside it:
+
+```bash
+pip install langchain langchain-anthropic mcp
+```
+
+These packages go into `venv/` only. Not into global Python.
+
+Step 5: deactivate when done:
+
+```bash
+deactivate
+```
+
+## 6. Real ProcIQ Connection
+
+In ProcIQ development:
+
+```text
+d:\prociq\venv  -> has fastapi, pydantic, sqlalchemy, celery, redis
+```
+
+In LangChain MCP project:
+
+```text
+d:\learning\venv  -> has langchain, mcp, langchain-anthropic
+```
+
+Same machine. Two projects. No conflict.
+
+## 7. requirements.txt
+
+When sharing the project with teammates, they need to know which packages to install.
+
+Save all current packages to a file:
+
+```bash
+pip freeze > requirements.txt
+```
+
+This creates a file like:
+
+```text
+langchain==0.3.0
+langchain-anthropic==0.2.0
+mcp==1.0.0
+```
+
+Teammate installs everything:
+
+```bash
+pip install -r requirements.txt
+```
+
+Exact same packages. Exact same versions. No guessing.
+
+## 8. Simple Summary
+
+```text
+pip = install packages.
+Virtual environment = isolate packages per project.
+requirements.txt = list of packages to share with team.
+```
+
+ProcIQ and LangChain projects both use these.
+
+Short version:
+
+```text
+One virtual environment per project.
+Always activate before installing.
+Always save requirements.txt before sharing.
 ```
