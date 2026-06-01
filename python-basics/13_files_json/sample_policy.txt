@@ -1,0 +1,1 @@
+IT purchases above 100000 need Finance approval.
