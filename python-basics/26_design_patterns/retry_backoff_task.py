@@ -1,3 +1,6 @@
+# Retry with Exponential Backoff — retry failed calls with growing delay (1s, 2s, 4s).
+# Task: retry a flaky ERP sync up to 4 times with doubling backoff between attempts.
+
 import time
 import random
 

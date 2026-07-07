@@ -1,3 +1,6 @@
+# Registry Pattern — central dict mapping a key to its handler function.
+# Task: route PRs to category-specific approval handlers with threshold rules.
+
 def check_it(pr):
         threshold = 50000
         needs = pr['amount'] > threshold

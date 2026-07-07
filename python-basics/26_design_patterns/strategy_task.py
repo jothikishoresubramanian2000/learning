@@ -1,3 +1,6 @@
+# Strategy Pattern — swap behaviour at runtime; caller code stays unchanged.
+# Task: apply ExactMatch or FuzzyMatch dedup strategy based on PR category.
+
 pr1 = {"pr_id": "PR-101", "supplier": "Cisco", "amount": 50000}
 pr2 = {"pr_id": "PR-099", "supplier": "Cisco", "amount": 50200}
 

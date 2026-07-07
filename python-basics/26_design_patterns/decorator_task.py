@@ -1,3 +1,6 @@
+# Decorator Pattern — wrap a function to add behaviour before/after without changing it.
+# Task: measure execution time of any function using a @measure_time decorator.
+
 import time
 
 def measure_time(func):

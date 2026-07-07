@@ -1,3 +1,6 @@
+# Continuous Polling — repeatedly check "is it done?" until ready or timeout.
+# Task: poll a background job status every second until "complete" or timeout hit.
+
 import time
 count = 0
 def status_check():

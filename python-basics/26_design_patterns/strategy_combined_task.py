@@ -1,3 +1,6 @@
+# Strategy Pattern — swap behaviour at runtime; caller code stays unchanged.
+# Task: validate price variance per category using different tolerance strategies via registry.
+
 prs = [
     {"pr_id": "PR-101", "category": "IT",             "last_price": 50000, "new_price": 58000},
     {"pr_id": "PR-202", "category": "Office Supplies", "last_price": 500,   "new_price": 530},

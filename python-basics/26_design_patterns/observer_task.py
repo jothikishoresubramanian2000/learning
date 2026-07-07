@@ -1,3 +1,6 @@
+# Observer Pattern — one subject change notifies many subscribers automatically.
+# Task: on PR approval, notify email, audit log, and supplier listeners.
+
 class PRApprovalEvent:
     def __init__(self):
         self.listeners = []

@@ -1,3 +1,6 @@
+# Singleton Pattern — one shared instance; create once, reuse everywhere.
+# Task: build get_groq_client() that returns the same Groq client across all calls.
+
 from groq import Groq
 import os
 

@@ -1,3 +1,6 @@
+# Factory Pattern — one function returns the right object based on input config.
+# Task: build create_llm(provider) factory that returns a GroqLLM with .ask() method.
+
 from groq import Groq
 import os
 

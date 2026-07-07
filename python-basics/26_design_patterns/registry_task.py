@@ -1,3 +1,5 @@
+# Registry Pattern — central dict mapping a key to its handler function.
+# Task: route PRs to the correct category-manager handler via a registry.
 
 def handle_it(pr_id):
     return(f'{pr_id} → IT Category Manager')
