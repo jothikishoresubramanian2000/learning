@@ -428,3 +428,129 @@
 - Typed Tenant / Org / User / Role models
 - Typed CRUD APIs
 - Typed validation
+
+---
+
+## Phase 5 — Production Backend Engineering
+> **Goal:** close the gap between roadmap-level code and a real production codebase
+> like **procIq-app** (NestJS + PostgreSQL/Prisma + AWS + Docker + tests).
+> Phases 1–4 teach the *language*; this phase teaches the *systems* built with it.
+> Do this AFTER Phase 4 (TypeScript) — Nest and Prisma are TypeScript-first.
+>
+> Reference project to study: `D:\learning\procIq-app`
+> - `apps/spine` — NestJS TS backend (the target style)
+> - `libs/db` — Prisma + PostgreSQL
+> - `docker-compose.yml`, `infra/` — infrastructure
+
+### Module 41 — Node.js Backend Foundations
+- HTTP deeper: methods, status codes, headers, REST design
+- Express basics (routing, middleware) — the layer Nest sits on
+- Request lifecycle: request → middleware → handler → response
+- Environment config & secrets (`.env`, `@nestjs/config`)
+- Project/folder architecture (layered: controller → service → repository)
+
+### Module 42 — Databases & SQL (PostgreSQL)
+- Relational model: tables, rows, columns, keys
+- Primary keys, foreign keys, relationships (1-1, 1-many, many-many)
+- Core SQL: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `WHERE`, `JOIN`, `GROUP BY`, `ORDER BY`
+- Indexes (why queries get slow), unique constraints
+- Transactions & ACID, isolation
+- Postgres roles & privileges (`CREATE ROLE`, `GRANT`)
+- **Row-Level Security (RLS)**: `ENABLE/FORCE ROW LEVEL SECURITY`, `CREATE POLICY ... USING/WITH CHECK`, `current_setting('app.tenant_id')`, fail-closed (0 rows) — procIq's core tenant isolation
+- Session config / GUC: `SET`/`set_config()` inside a transaction
+- Raw SQL basics, connection pooling
+> Study: `migrations/` and the `*_rls_*` SQL files
+
+### Module 43 — Prisma ORM
+- What an ORM is (objects ↔ tables)
+- `schema.prisma` — models, relations, enums, `@map`/`@@map`, `@@unique`, `@@index`, `@id`, `@default(uuid())`, `Json`, `Decimal`, `String[]`
+- Migrations (`migrate dev/deploy/status`), shadow DB, `url` vs `directUrl`
+- Prisma Client queries (`findMany/findUnique/create/update`, `select`, `orderBy`)
+- Error codes (`P2002` unique violation), `instanceof PrismaClientKnownRequestError`
+- `$transaction`, `$queryRaw`/`$executeRaw`, client `$extends` (query hooks)
+- **Two-client RLS pattern**: tenant-scoped client vs admin (BYPASSRLS) client, injecting `SET app.tenant_id` per query
+- Generated client location (custom `output`), types + type safety, seeding
+> Study: `libs/db/prisma/schema.prisma`, `libs/db/src/connection.service.ts`
+
+### Module 44 — NestJS Framework  *(largest module — see day split)*
+- Why a framework (structure, DI, testability)
+- Bootstrap (`NestFactory`, global prefix, CORS, `enableShutdownHooks`)
+- Modules — `@Module`, imports/providers/exports, **global modules** (`isGlobal`), **dynamic modules** (`forRoot()`)
+- Controllers + routing (`@Controller`, `@Get/@Post/@Patch`, `@Param/@Body/@Query`)
+- Providers/Services + **Dependency Injection** (constructor injection, **custom provider tokens** + `@Inject()`)
+- **Decorators** built-in + **custom** (`SetMetadata`, `createParamDecorator` → `@Roles`, `@Public`, `@CurrentUser`)
+- `reflect-metadata` + `Reflector.getAllAndOverride` (how metadata drives guards)
+- Repository pattern (controller → service → repository)
+- DTOs + validation (`class-validator`, `class-transformer`, global `ValidationPipe`: whitelist/transform)
+- **Pipes, Guards** (`CanActivate`, `APP_GUARD`), **Interceptors** (`NestInterceptor`, `APP_INTERCEPTOR`, **RxJS `Observable`**), **Exception Filters** (`@Catch`, global filter → consistent error envelope)
+- **Middleware** (`NestModule.configure`, `MiddlewareConsumer`)
+- **Lifecycle hooks** (`OnModuleInit`, `OnModuleDestroy`)
+- **WebSocket Gateways** (`@WebSocketGateway`, `@SubscribeMessage`, `OnGatewayConnection`)
+- Custom error hierarchy → HTTP mapping (`ProcIQError`)
+- Swagger/OpenAPI docs (`@nestjs/swagger`)
+> Study: `apps/spine/src/users/`, `apps/spine/src/common/`, `apps/spine/src/main.ts`, `apps/spine/src/gateways/`
+
+### Module 45 — Authentication & Authorization
+- Sessions vs tokens; httpOnly cookies vs Bearer header
+- **JWT / OIDC** (structure, claims `iss`/`aud`/`kid`, RS256 signing & verification)
+- **JWKS** — fetching signing keys (`jwks-rsa`), per-issuer key caching
+- Passport strategies (`passport-jwt`, custom `secretOrKeyProvider`)
+- Auth provider — **AWS Cognito** (user pools, groups↔roles), multi-pool (global + per-tenant)
+- **JIT user sync** (Cognito → DB source-of-truth for roles, Redis cache + invalidation)
+- **RBAC** (roles, permissions, `@Roles` + guard, role ceilings)
+- Separation of Duties (SoD) concept
+- Tenant-trust: token tenant must match host-resolved tenant
+> Study: `apps/spine/src/auth/`, `apps/spine/src/guards/`
+
+### Module 46 — Async Architecture & Messaging
+- **AsyncLocalStorage** (`async_hooks`) — per-request context (tenant/user/correlationId) threaded through async calls (powers RLS + logging)
+- Correlation IDs (edge middleware → propagated across services)
+- Redis (caching, rate-limit, pub/sub) — `ioredis`
+- Message queues — **AWS SQS** (long-poll consumer, DLQ, poison messages)
+- Event-driven patterns — `@nestjs/event-emitter` (in-process bus), typed event contracts, EventBridge
+- Background jobs & schedulers (`@nestjs/schedule`, job registry/dispatcher/retry/overlap-guard)
+- **WebSockets** / real-time — `socket.io` (rooms, chunked streaming, handshake auth)
+- **Chain of Responsibility** pattern (`setNext` pipeline)
+- Long-running workflows — Step Functions
+> Study: `apps/spine/src/jobs/`, `apps/spine/src/gateways/`, `libs/shared-utils/` (request-context), `libs/job-framework/`
+
+### Module 47 — Cloud & AWS (SDK v3 + IaC)
+- AWS SDK for JS (`@aws-sdk/*`), default credential provider chain
+- Cognito (auth), SES (email), SQS (queue), DynamoDB (+ doc client), Secrets Manager, EventBridge, Step Functions
+- **LocalStack** (run AWS locally for dev) — procIq uses it
+- **Infrastructure as Code — AWS CDK** (`aws-cdk-lib`: CloudFront, Route53, ACM; `cdk synth/deploy/diff`)
+- ECS deployment context (SIGTERM draining, `trust proxy` behind nginx)
+> Study: `infra/aws/`
+
+### Module 48 — Testing
+- Why test (confidence, refactoring)
+- **Jest** — unit tests, assertions, matchers
+- Mocking dependencies (mock repos/services)
+- Test doubles, `spec.ts` files
+- e2e / integration tests
+- Coverage
+> Study: `apps/spine/src/users/users.service.spec.ts`
+
+### Module 49 — DevOps & Tooling
+- **Docker** — images, containers, Dockerfile
+- **docker-compose** — multi-service local dev (2× Postgres, Redis, LocalStack, nginx, pgAdmin), healthchecks, profiles
+- **nginx** — reverse proxy, TLS termination, `X-Forwarded-*`, subdomain host routing (multi-tenancy)
+- **Monorepo** — Nx (task graph, caching, affected builds), pnpm workspaces, Makefile entry points
+- Git workflow, hooks (**husky**: branch-name + commit-msg), linting (ESLint), Prettier
+- **Contract-first codegen** — JSON Schema → TS + Python (`generate:contracts`)
+- CI/CD basics (`.github/`)
+- Logging & observability — Pino (structured JSON), `pino-loki` → Loki/Grafana, Sentry/GlitchTip error reporting
+- Env & secrets management (`.env.local`, config validation)
+> Study: `docker-compose.yml`, `Makefile`, `nx.json`, `.husky/`, `infra/`
+
+### Module 50 — Build ProcIQ-Style
+> Capstone: build a small multi-tenant SaaS feature end-to-end using everything:
+> NestJS module + Prisma model + migration + DTO/validation + JWT-guarded RBAC
+> routes + a queue/job + unit tests + Docker. Mirrors the `apps/spine` pattern.
+
+---
+
+### After Phase 5 you can read & write procIq-level code
+Language (P1–2) → TypeScript (P4) → NestJS + Prisma + Auth + AWS + Testing + Docker (P5).
+The pieces you saw in `users.controller.ts` / `users.service.ts` map directly to
+Modules 44 (Nest/DI/decorators), 43 (Prisma), 45 (auth/guards), 48 (spec tests).

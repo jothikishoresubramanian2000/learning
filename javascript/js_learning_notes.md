@@ -437,4 +437,60 @@ Compare **month first, then day** (bigger unit first); year ignored in the check
 
 ## ✅ Phase 1 complete — Modules 1–12 (Fundamentals)
 
-*Next: Phase 2 — Module 13 (Scope & Closures).*
+---
+
+# Phase 2 — Intermediate JavaScript
+
+## Module 13 — Scope & Closures
+
+**Scope = where a variable is visible/alive.**
+
+- **Global scope** — declared outside everything → visible everywhere.
+- **Function scope** — declared in a function → visible only inside it.
+- **Block scope** — `let`/`const` in any `{ }` → visible only in that block. ⚠️ `var` ignores block scope (leaks out) — avoid `var`.
+- **Lexical scope** — inner code sees **outer** variables, not vice-versa. **One-way: inner → outer.**
+- **Scope chain** — lookup order: current block → enclosing function → outer → global. First match wins; not found → `ReferenceError`.
+
+```js
+const a = 1;
+function outer() {
+  const b = 2;
+  function inner() {
+    const c = 3;
+    console.log(a, b, c);   // ✅ sees own + outer + global
+  }
+  console.log(c);            // ❌ outer can't see inner's c
+}
+```
+
+**⭐ Closure** = a function that **remembers the variables from where it was created**, even after that outer function has finished.
+
+```js
+function makeCounter() {
+  let count = 0;             // private
+  return function () { count++; return count; };
+}
+const c = makeCounter();
+c(); // 1   c(); // 2   c(); // 3    ← same private count survives
+const c2 = makeCounter();
+c2(); // 1  ← independent closure, fresh count
+```
+Why: the inner function was born inside `makeCounter`, so by lexical scope it keeps a **live link** to `count`; JS keeps `count` alive while the inner function exists. Analogy: the inner function packs the outer variables into a **backpack** and carries them everywhere.
+
+**Private state (function factory)** — data nothing outside can touch:
+```js
+function makeAccount(balance) {          // balance is private
+  return {
+    deposit(amt) { balance += amt; return balance; },   // method shorthand (Module 11)
+    withdraw(amt) { balance -= amt; return balance; }
+  };
+}
+const acc = makeAccount(100);   // returns an OBJECT (deposit NOT run yet)
+acc.deposit(50);                // NOW deposit runs → 150
+acc.balance;                    // undefined — private, only methods touch it
+```
+⚠️ `makeAccount(100)` runs the factory and **returns an object**; the methods run only when you later call `acc.deposit(...)`. Two separate calls.
+
+**Backend use:** closures power module privacy, function factories (ID generators, budget trackers, approval limiters), middleware, caching, rate-limiters, per-request handlers — all over procIq (`makeLogger`, `makeRepo`, config factories).
+
+*Next: Module 14 (Execution Model) + Module 15 (Hoisting).*
