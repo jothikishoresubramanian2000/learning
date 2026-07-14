@@ -493,4 +493,238 @@ acc.balance;                    // undefined — private, only methods touch it
 
 **Backend use:** closures power module privacy, function factories (ID generators, budget trackers, approval limiters), middleware, caching, rate-limiters, per-request handlers — all over procIq (`makeLogger`, `makeRepo`, config factories).
 
-*Next: Module 14 (Execution Model) + Module 15 (Hoisting).*
+---
+
+## Module 14 — Execution Model
+
+**Execution Context** = the environment created whenever code runs. Holds its variables, its `this`, and a link to the outer scope (the scope chain).
+- **Global context** — created once when the file starts.
+- **Function context** — created fresh on **every** call.
+
+**⭐ Two phases per context** (this IS hoisting, mechanically):
+```
+1. CREATION  — scan code, register declarations:
+                 function declarations → name + full body ready
+                 var                   → name registered, value = undefined
+                 let/const             → name registered, NO value (TDZ)
+2. EXECUTION — run line by line, assign real values
+```
+
+**Call Stack** — JS is **single-threaded**, one thing at a time; tracks position with a LIFO stack.
+```js
+function a(){ b(); }  function b(){ c(); }  function c(){ }
+a();
+// push a → [a] → push b → [a,b] → push c → [a,b,c]
+// c returns → [a,b] → b returns → [a] → a returns → []
+```
+"End" lines print in **reverse** because the innermost call finishes first. A **stack trace** shows the frames still on the stack.
+
+**Stack Overflow** — recursion with no exit:
+```js
+function boom(){ boom(); }   // RangeError: Maximum call stack size exceeded
+```
+
+**⭐ Memory: Stack vs Heap**
+- **Stack** — fast, fixed slots. Holds **primitives** and **references (addresses)**.
+- **Heap** — big, flexible. Holds **objects, arrays, functions**.
+```js
+let x = 5;            // 5 on the stack
+const o = { a: 1 };   // object in HEAP; o holds its address on the stack
+const p = o;          // copies only the ADDRESS → same heap object
+```
+**This explains the reference trap (Module 3):** primitives copy the value; objects copy the address.
+
+Analogy: stack = your **desk** (small, tidy, top paper first). Heap = a **warehouse**; the desk only holds a slip with the shelf number.
+
+---
+
+## Module 15 — Hoisting
+
+**Hoisting** = the Creation Phase. Declarations are registered *before* execution.
+
+```js
+console.log(a);   // undefined       ← var: hoisted AND initialized to undefined
+console.log(b);   // ReferenceError  ← let: TDZ
+console.log(c);   // ReferenceError  ← const: TDZ
+var a = 1; let b = 2; const c = 3;
+```
+
+| | Memory allocated? | Initialized? | Access before its line |
+|---|---|---|---|
+| `var` | ✅ | ✅ **to `undefined`** | prints `undefined` (silent bug) |
+| `let` / `const` | ✅ | ❌ **uninitialized** | `ReferenceError` (TDZ) |
+
+- **Function declarations** are hoisted with the **full body** → callable before their line.
+- **Function expressions / arrows** follow their variable's rule → `const fn = () => {}` is in the TDZ.
+- The error says *"Cannot access"* (not *"is not defined"*) — proof the name **is** registered, it just has no value yet. That gap is the **Temporal Dead Zone**.
+- At top level, `var` attaches to the global object; `let`/`const` live in a separate script scope.
+
+**⭐ Why `let`/`const` are safer:** `var` silently hands you `undefined` and the bug surfaces far away, later. `let`/`const` **throw at the mistake**. Loud failure beats a silent wrong value.
+
+Analogy: TDZ = a **reserved seat with a "do not sit yet" sign** — the seat exists, sitting early throws you out. `var` gives you an **empty chair** — you sit, find nothing, notice much later.
+
+**Best practice:** define, then use. Never rely on hoisting.
+
+---
+
+## Module 16 — `this`
+
+**⭐ `this` = who called the function — decided at CALL time, not where it's written.** Read the call site.
+
+| Call form | `this` is |
+|-----------|-----------|
+| `obj.method()` | `obj` (left of the dot) |
+| `fn()` (bare) | `undefined` (strict/modules) or global |
+| arrow function | inherited from where it was **written** (lexical) |
+| `fn.call(x)` / `fn.apply(x)` | `x` |
+| `fn.bind(x)` then call | `x` |
+
+```js
+const pr = { id: "PR-001", show() { console.log(this.id); } };
+pr.show();            // "PR-001"  (left of dot = pr)
+const fn = pr.show;   // pulled OUT of the object
+fn();                 // undefined — no dot, no owner → this lost
+```
+
+**⭐ Losing `this`** — the function didn't change, the **call site** did. Same bug passing a method as a callback (`setTimeout(pr.show)`).
+
+**⭐ Arrow functions have NO own `this`** — inherit lexically (like closures):
+```js
+const pr = {
+  id: "PR-001",
+  regular() { console.log(this.id); },     // this = pr ✅
+  arrow: () => console.log(this.id)         // this = outer/module ❌ undefined
+};
+```
+- **Never use an arrow as an object method.**
+- **DO use arrows *inside* a method** — they keep the method's `this`:
+```js
+list() { this.items.forEach(i => console.log(this.id, i)); }  // ✅ arrow keeps this = the object
+```
+If that callback were `function(){}`, `this` would be lost.
+
+**Fix `this` explicitly:**
+```js
+show.call(pr);              // invoke NOW, this = pr, args listed:  call(obj, a, b)
+show.apply(pr, [a, b]);     // invoke NOW, args as ARRAY
+const bound = show.bind(pr);// returns a NEW function tied to pr (does NOT call)
+bound();                    // "PR-001"  — use to fix a callback: pr.show.bind(pr)
+```
+- `call`/`apply` → invoke immediately (differ only in arg passing).
+- `bind` → returns a new bound function to call later.
+
+Analogy: `this` is like the word **"here"** — meaning depends on **where you stand when you say it** (call site). Arrows are a **quote** — they keep the "here" of where they were written.
+
+**Backend:** NestJS services use `this.repo`, `this.logger` everywhere; passing `this.method` as a callback without `bind` loses `this` — a real bug. That's why arrows are used inside methods.
+
+---
+
+## Module 17 — DOM (awareness only)
+
+**DOM = Document Object Model** — the browser turns loaded HTML into a **tree of objects** JS can read/change. Browser-only; does NOT run in Node.
+```js
+document.querySelector("#id");          // find element
+el.textContent = "Approved";            // change it
+el.addEventListener("click", handler);  // react
+```
+Backend never touches the DOM. But JS being **event-driven + callback-heavy** comes from its DOM origins — those patterns carry into Node. procIq's DOM work lives in `apps/compass` (React); `apps/spine` backend never touches it.
+
+---
+
+## Module 18 — Events & Callbacks
+
+**Callback = a function passed to another function, run later.** Used for "do this when X finishes."
+```js
+function fetchUser(id, cb) { const user = {id, name:"K"}; cb(user); }
+fetchUser(1, (user) => console.log(user.name));   // runs when ready
+```
+
+**⭐ Async ordering** — JS doesn't block on slow work; it moves on and runs the callback later. [`setTimeout` fakes delay — Module 26]
+```js
+console.log("1"); setTimeout(() => console.log("2"), 1000); console.log("3");
+// prints 1 → 3 → 2   (didn't wait for the timer)
+```
+
+**Error-first callback** (Node convention): first arg = error (`null` if ok), second = result.
+```js
+readData((err, data) => { if (err) return handle(err); use(data); });
+```
+⚠️ Guard missing values, not just bad ones: `pr.amount == null || pr.amount <= 0`.
+
+**⭐ Callback Hell** — when each async step needs the previous result, callbacks nest into a "pyramid of doom." Ugly, repeated error handling. **Promises (M19) + async/await (M20) exist to flatten this.**
+
+### Events
+**Event = "something happened"; listener = function that reacts.** Register with `.on`, fire with `.emit`.
+- Browser: `el.addEventListener("click", fn)`
+- Node: **EventEmitter** [deep: M27; used in event-driven architecture M46]
+```js
+const EventEmitter = require("events");
+const bus = new EventEmitter();
+bus.on("pr.submitted", (pr) => console.log("Email", pr));   // subscribe (many allowed)
+bus.on("pr.submitted", (pr) => console.log("Audit", pr));
+bus.emit("pr.submitted", "PR-001");   // fire → all listeners run in order
+```
+- `.on(name, fn)` = subscribe; `.emit(name, data)` = fire.
+- **Decoupling** — the emitter doesn't know who listens. Add/remove reactions without touching the emitter. The listener IS a callback; events = callbacks organized by name with many-listener support.
+
+Analogy: radio. `.on` = tune to a channel; `.emit` = station broadcasts; every tuned radio receives it.
+
+**Backend (procIq):** `@nestjs/event-emitter` — emit `user.created`, and separate listeners (welcome email, ERP sync) react independently. Backbone of event-driven architecture.
+
+---
+
+## Module 19 — Promises
+
+**Promise** = an object for a value that will exist **later**. States: **pending → fulfilled (resolve) / rejected (reject)**. Once settled, never changes.
+
+```js
+const p = new Promise((resolve, reject) => {
+  if (ok) resolve(value);   // success
+  else    reject(error);    // failure
+});
+p.then(v => ...)     // on resolve
+ .catch(e => ...)    // on reject
+ .finally(() => ...) // always
+```
+
+**⭐ Chaining flattens callback hell.** Each `.then` sees ONLY what the previous returned:
+- `return a value` → next `.then` gets it immediately.
+- `return a Promise` → chain **waits** for it, next `.then` gets ITS resolved value.
+```js
+validate(pr)
+  .then(pr => checkBudget(pr))   // return a Promise → chain waits (dependent step)
+  .then(pr => raisePo(pr))
+  .catch(err => ...);            // ONE catch for all steps; any reject jumps here
+```
+⚠️ Always `return` the inner promise, or the chain won't wait.
+
+**⭐ Carry data forward** — a `.then` only receives the previous return. To use an earlier value later, **nest** (keep it in scope via closure) or **bundle into an object** you keep returning:
+```js
+.then(pr =>
+  Promise.all([getApprovers(pr.dept), getBudget(pr.dept)])
+    .then(([approvers, budget]) => ({ pr, approvers, budget }))  // bundle old + new
+)
+.then(data => raisePo(data.pr).then(po => ({ ...data, po })))     // add to bundle
+```
+`([approvers, budget])` = array destructuring (READ the Promise.all result array). `({ pr, approvers, budget })` = object shorthand (MAKE a bundle). Arrow returning an object needs `( )` around `{ }`.
+
+**⭐ Combinators:**
+| Method | Resolves when | Use |
+|--------|--------------|-----|
+| `Promise.all` | ALL succeed (rejects if ANY fails — fail-fast) | need every result, parallel |
+| `Promise.allSettled` | ALL finish (never rejects; `{status,value/reason}[]`) | want all outcomes incl. failures |
+| `Promise.race` | FIRST to settle (win or lose) | timeouts |
+| `Promise.any` | FIRST to succeed | first working source |
+
+**When to use what:**
+- One async op → single Promise.
+- Steps **depend** on each other, ordered → **chain + return**.
+- **Independent** ops, need all, want speed → **`Promise.all`** (parallel).
+- Independent, want all outcomes even on failure → **`allSettled`**.
+- ⚠️ Don't chain independent calls — makes them needlessly sequential/slow.
+
+Analogy: Promise = a restaurant **buzzer**. Order → get buzzer (pending); sit down (JS keeps running); green → food (`resolve`/`.then`); red → failed (`reject`/`.catch`). `Promise.all` = hold 3 buzzers, eat when all flash.
+
+**Backend:** `prisma.user.findMany()`, `axios.get()`, `sqs.send()` all return Promises. procIq is Promises everywhere (usually via async/await — M20).
+
+*Next: Module 20 (async/await).*

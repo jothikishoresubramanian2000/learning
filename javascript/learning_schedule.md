@@ -35,10 +35,10 @@ Modules 1–12 completed: Introduction, Variables, Data Types, Operators, Type C
 ## Phase 2 — Intermediate JavaScript (15 days)
 
 - [x] **Day 1** — M13 Scope & Closures: global/function/block scope, lexical scope, nested functions, closures, practical uses (counter, private state) ✅
-- [ ] **Day 2** — M14 Execution Model + M15 Hoisting: execution context, call stack, memory (heap/stack), hoisting, Temporal Dead Zone
-- [ ] **Day 3** — M16 `this`: `this` in global/function/method/arrow, `bind`/`call`/`apply`, losing `this`
-- [ ] **Day 4** — M17 DOM (awareness) + M18 Events & Callbacks: what DOM is, `querySelector`, events, `addEventListener`, callbacks, callback hell
-- [ ] **Day 5** — M19 Promises: states, `resolve`/`reject`, `.then/.catch/.finally`, chaining, `Promise.all/allSettled/race/any`
+- [x] **Day 2** — M14 Execution Model + M15 Hoisting: execution context, call stack, memory (heap/stack), hoisting, Temporal Dead Zone ✅
+- [x] **Day 3** — M16 `this`: `this` in global/function/method/arrow, `bind`/`call`/`apply`, losing `this` ✅
+- [x] **Day 4** — M17 DOM (awareness) + M18 Events & Callbacks: what DOM is, `querySelector`, events, `addEventListener`, callbacks, callback hell, EventEmitter ✅
+- [x] **Day 5** — M19 Promises: states, `resolve`/`reject`, `.then/.catch/.finally`, chaining, carry-forward bundling, `Promise.all/allSettled/race/any` ✅
 - [ ] **Day 6** — M20 Async/Await: `async` functions, `await`, `try/catch`, sequential vs parallel, `await Promise.all`
 - [ ] **Day 7** — M21 Error Handling: `try/catch/finally`, `throw`, `Error` object, custom error classes, errors in async
 - [ ] **Day 8** — M22 Modules: CommonJS (`require`/`module.exports`), ES Modules (`import`/`export`), named vs default, `"type":"module"`
