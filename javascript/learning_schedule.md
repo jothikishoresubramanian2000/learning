@@ -39,11 +39,14 @@ Modules 1–12 completed: Introduction, Variables, Data Types, Operators, Type C
 - [x] **Day 3** — M16 `this`: `this` in global/function/method/arrow, `bind`/`call`/`apply`, losing `this` ✅
 - [x] **Day 4** — M17 DOM (awareness) + M18 Events & Callbacks: what DOM is, `querySelector`, events, `addEventListener`, callbacks, callback hell, EventEmitter ✅
 - [x] **Day 5** — M19 Promises: states, `resolve`/`reject`, `.then/.catch/.finally`, chaining, carry-forward bundling, `Promise.all/allSettled/race/any` ✅
-- [ ] **Day 6** — M20 Async/Await: `async` functions, `await`, `try/catch`, sequential vs parallel, `await Promise.all`
-- [ ] **Day 7** — M21 Error Handling: `try/catch/finally`, `throw`, `Error` object, custom error classes, errors in async
-- [ ] **Day 8** — M22 Modules: CommonJS (`require`/`module.exports`), ES Modules (`import`/`export`), named vs default, `"type":"module"`
-- [ ] **Day 9** — M23 Classes: `class`, `constructor`, methods, `this`, `extends`, `super`, getters/setters, static, private `#`
-- [ ] **Day 10** — M24 Collections + M25 JSON: `Map`, `Set`, `WeakMap/WeakSet`, `JSON.stringify/parse`
+- [x] **Day 6** — M20 Async/Await: `async` functions, `await`, `try/catch`, sequential vs parallel, `await Promise.all`, setTimeout→Promise pattern ✅
+> **Order note:** M23 (Classes) is taught BEFORE M21 (Error Handling), because custom error classes (`extends Error`) depend on classes. Numbers are labels; sequence below is the real order.
+
+- [x] **Day 7** — M23 Classes: `class`, `constructor`, methods, `this`, `extends`, `super`, getters/setters, static, private `#` ✅
+- [x] **Day 8** — M21 Error Handling: `try/catch/finally`, `throw`, `Error` object, custom error classes (`extends Error`), `instanceof` dispatch, errors in async ✅
+- [x] **Day 9** — M22 Modules: CommonJS (`require`/`module.exports`), ES Modules (`import`/`export`), named vs default, dynamic import, closure-factory trap ✅
+- [x] **Day 10a** — M24 Collections: `Map`, `Set`, `WeakMap/WeakSet`, dedupe, tally pattern, Map vs Object ✅
+- [x] **Day 10b** — M25 JSON: `JSON.stringify/parse` round-trip, pretty print, JSON vs JS object, what JSON drops ✅
 - [ ] **Day 11** — M26 Timers & Event Loop: `setTimeout/setInterval/clear*`, event loop, `setImmediate`, `process.nextTick`
 - [ ] **Day 12** — M27 Node.js Basics (part 1): globals, `process.argv/env`, module system, `fs` (read/write, sync vs async)
 - [ ] **Day 13** — M27 Node.js Basics (part 2): `path`, `os`, `events`/EventEmitter, `__dirname/__filename`, `.env`

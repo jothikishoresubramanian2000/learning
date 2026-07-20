@@ -727,4 +727,311 @@ Analogy: Promise = a restaurant **buzzer**. Order → get buzzer (pending); sit 
 
 **Backend:** `prisma.user.findMany()`, `axios.get()`, `sqs.send()` all return Promises. procIq is Promises everywhere (usually via async/await — M20).
 
-*Next: Module 20 (async/await).*
+---
+
+## Module 20 — async / await
+
+**Nicer syntax over Promises** — same machinery, but async code reads top-to-bottom like normal code.
+
+- **`async`** marks a function that **always returns a Promise** (a plain `return` value is auto-wrapped).
+- **`await`** pauses until a Promise settles, then **hands back the resolved value as a normal variable**. Only usable inside an `async` function.
+
+```js
+async function run(id) {
+  try {
+    const pr = await getPr(id);      // resolve → value here
+    console.log(pr.amount);
+  } catch (err) {
+    console.log("Error:", err);      // reject/throw → caught here
+  }
+}
+```
+
+**⭐ Flattens the chain** — `valid`, `checked`, `po` are just variables in one scope. No `.then`, no bundling, no nesting (the M19 pain, gone).
+
+**⭐ resolve/reject ↔ return/throw:**
+| Inside `new Promise(...)` | Inside `async function` |
+|---------------------------|-------------------------|
+| `resolve(value)` | `return value` |
+| `reject(error)` | `throw error` |
+A rejected `await` **throws** → caught by `try/catch`. One `catch` covers all awaits above it.
+
+**⭐ Sequential vs Parallel (the #1 mistake):**
+```js
+// ❌ slow — independent calls awaited one-by-one (1s + 1s = 2s)
+const a = await getApprovers(dept);
+const b = await getBudget(dept);
+
+// ✅ fast — start both, await together (~1s)
+const [a, b] = await Promise.all([getApprovers(dept), getBudget(dept)]);
+```
+`await` pauses. Sequential only when a step **depends** on the previous; independent work → `Promise.all`.
+
+**⚠️ Faking async delay — `setTimeout` alone does NOT make a Promise.** `return` inside a `setTimeout` callback goes nowhere. Must wrap and `resolve` inside:
+```js
+const delayed = (x) => new Promise((resolve) => {
+  setTimeout(() => resolve(x), 1000);   // resolve is the ONLY way a value leaves a timeout
+});
+```
+
+**Common mistakes:** forgetting `await` (get the Promise, not the value); `await` in a non-async function (SyntaxError); `forEach` with `await` doesn't wait (use `for...of` or `Promise.all(map(...))`).
+
+**Timing:** `Date.now()` = ms now; subtract two to measure elapsed.
+
+**Backend (procIq):** services are almost entirely async/await — every DB/AWS/HTTP call is `await`ed:
+```js
+async create(dto) {
+  const user = await this.repo.create(dto);
+  await this.cognito.createUser(user.email);
+  return user;
+}
+```
+
+*(Taught out of number order — Classes before Error Handling, since custom errors need `extends`.)*
+
+---
+
+## Module 23 — Classes
+
+A **class** = blueprint for objects sharing shape + behavior. Like Python classes; a few JS differences.
+
+```js
+class PurchaseRequest {
+  constructor(id, amount) {   // like __init__; runs on `new`
+    this.id = id;             // instance property (this = the new object)
+    this.amount = amount;
+  }
+  withTax() { return this.amount * 1.18; }   // method (no `function`, no commas between)
+}
+const pr = new PurchaseRequest("PR-001", 5000);   // `new` is REQUIRED
+```
+
+**Constructor is optional** — needed only when instance data comes from `new` arguments. Fixed defaults use **class fields** instead:
+```js
+class Counter { count = 0; increment() { return ++this.count; } }   // no constructor needed
+```
+
+**Inheritance — `extends` / `super`:**
+```js
+class PurchaseOrder extends Document {
+  constructor(id, vendor) {
+    super(id);              // ⭐ call parent constructor FIRST, before using `this`
+    this.vendor = vendor;
+  }
+  describe() { return `PO ${this.id}`; }   // override parent; super.describe() calls parent's
+}
+```
+
+**Getters / setters** — properties that run code:
+```js
+get tax() { return this._amount * 0.18; }   // read: p.tax  (NO parens)
+set amount(v) { this._amount = v; }          // write: p.amount = 6000  (v = the assigned value)
+```
+⚠️ Store the real value in a **different backing field** (`_amount`) — a setter assigning to its own name recurses forever. `_amount` = convention ("internal"), still public.
+
+**Static** — belongs to the CLASS, not instances:
+```js
+class PR { static count = 0; static fromJson(j) { return new PR(j.amount); } }
+PR.count;  PR.fromJson({...});   // called on the class, not an instance
+```
+
+**Private fields — `#`** (truly private, enforced):
+```js
+class Account {
+  #balance = 0;                       // MUST be declared in class body
+  deposit(a) { this.#balance += a; }  // only accessible inside via this.#balance
+}
+a.#balance;   // ❌ SyntaxError outside
+```
+`#balance` = real lock (enforced); `_amount` = convention (polite request). Class version of the closure private-state (M13).
+
+**JS vs Python:** `__init__`→`constructor`, `self`→`this`, `class C(P)`→`class C extends P`, `super().__init__()`→`super()`, `@property`→`get`, `@staticmethod`→`static`, `self.__x`→`this.#x`, and JS **requires `new`**.
+
+**Backend:** procIq is built on classes — every NestJS service/controller/guard/custom-error is a class (`class UsersService`, `class BudgetError extends Error`, `class RbacGuard implements CanActivate`) using constructor injection, `extends`, decorators.
+
+---
+
+## Module 21 — Error Handling
+
+```js
+try {
+  riskyThing();
+} catch (err) {
+  console.log(err.message);   // runs only if try threw
+} finally {
+  cleanup();                  // runs ALWAYS (success or fail); optional
+}
+```
+
+**`throw`** — raise an error; stops the function immediately, jumps to nearest `catch`. **Throw an `Error` object** (not a string) — carries `.message`, `.name`, `.stack`.
+```js
+if (amount <= 0) throw new Error("amount must be positive");
+```
+⚠️ Log `err.message` (clean), not the whole `err` (dumps the stack trace).
+
+**Built-in error types** JS throws: `TypeError` (wrong type), `ReferenceError` (undeclared/TDZ), `SyntaxError` (broken code), `RangeError` (stack overflow).
+
+**⭐ Custom error classes** (needs `extends` — Module 23):
+```js
+class BudgetError extends Error {
+  constructor(message) { super(message); this.name = "BudgetError"; }
+}
+throw new BudgetError("over budget");
+```
+Lets you tell error types apart and handle each differently:
+```js
+catch (err) {
+  if (err instanceof BudgetError) handleBudget(err);
+  else throw err;                 // not mine → re-throw, let a higher layer handle
+}
+```
+
+**Async errors** — a rejected `await` throws → catch with `try/catch` (M20). `.catch()` does the same for `.then` chains. In an `async` function, `throw` = reject.
+
+**When to catch vs bubble:**
+- **Catch** when you can act (retry, default, friendly message).
+- **Let it bubble** (don't catch) when you can't handle it — a higher layer decides.
+- ⚠️ Never silently swallow (`catch {}` doing nothing) — you lose the failure.
+
+**Guard clauses** — validate early, throw fast:
+```js
+if (!pr) throw new Error("pr required");
+if (pr.amount <= 0) throw new Error("invalid amount");
+// past here, inputs are guaranteed valid
+```
+
+**Backend:** every route validates input and throws typed errors; a global handler catches them and returns the right HTTP status. procIq's `AllExceptionsFilter` catches everything → consistent JSON error response. `NotFoundException`, `BadRequestException`, `ProcIQError` are custom error classes mapped to 404/400/etc.
+
+---
+
+## Module 22 — Modules
+
+Splitting code across files: one file **exports**, another **imports**. Two systems in JS.
+
+**CommonJS** (Node classic, `.js` default):
+```js
+// math.js
+const add = (a, b) => a + b;
+module.exports = { add };          // export
+// main.js
+const { add } = require("./math"); // import (no extension; ./ = local file)
+```
+
+**ES Modules** (modern standard — browsers, TypeScript, all of procIq):
+```js
+// named exports (many per file)
+export const add = (a, b) => a + b;
+export function gst(a) { return a * 0.18; }
+import { add, gst } from "./math.mjs";     // braces, names MUST match
+
+// default export (ONE main thing per file)
+export default class Budget { }
+import Budget from "./budget.mjs";          // no braces, YOU name it
+
+// mix + rename
+import Budget, { add as sum } from "./x.mjs";
+```
+
+| | Named | Default |
+|---|-------|---------|
+| Count | many | one per file |
+| Import | `import { x }` (exact name) | `import x` (any name) |
+
+**How Node picks:** `.js` → CommonJS · `.mjs` → ESM · or `"type":"module"` in package.json → `.js` becomes ESM. **TypeScript `.ts` files use ESM natively** — the TS tooling handles it, so procIq needs no `.mjs`. ESM path in TS omits the extension (`'./users.repository'`); plain-Node ESM needs it (`'./x.mjs'`).
+
+**You export a BINDING (name/value)** — function decl, arrow-in-const, class, number… all the same. Arrows export via their const: `export const add = (a,b) => ...` (can't `export` an arrow without const/let). `export function` shorthand works for declarations only.
+
+⚠️ **Static `import` must be top-level** (hoisted/resolved before code runs) — not inside functions/ifs. For conditional/lazy loading use **dynamic `import()`** — a function returning a Promise, works anywhere (rare in backend).
+
+⚠️ **Closure-factory trap:** a factory returns the thing directly. `cbudget(bal)` should `return { spend() {...} }` — NOT `return function(){ return {...} }` (that's one layer too many → `cbudget(bal)` gives a function, not the object → `.spend is not a function`). One function per layer you actually need.
+
+Analogy: a module is a shop; `export` = the display window (public); the rest of the file = back room (private). Default export = the shop's signature product; named = labeled shelf items.
+
+**Backend:** every procIq file starts with imports (`import { Injectable } from '@nestjs/common'`). One class/concern per file.
+
+---
+
+## Module 24 — Collections (Map & Set)
+
+**`Set`** — a list of **unique** values (no index, just membership):
+```js
+const s = new Set();
+s.add("PR-001"); s.add("PR-001");   // dupe ignored
+s.size; s.has("PR-001"); s.delete("x");   // note .size, not .length
+const unique = [...new Set(array)];        // ⭐ dedupe an array in one line
+const deptSet = new Set(prs.map(p => p.dept));  // Set from a field
+```
+
+**`Map`** — key→value with **any key type**, keeps insertion order:
+```js
+const m = new Map();
+m.set("PR-001", 5000); m.get("PR-001"); m.has(k); m.delete(k); m.size;
+for (const [key, value] of m) { ... }               // iterate pairs
+const m2 = new Map(prs.map(p => [p.id, p.amount])); // ⭐ build from [k,v] pairs
+```
+Values can be any type (number/object/array); keep them consistent per Map.
+
+**⭐ Tally pattern** (count/group):
+```js
+const counts = new Map();
+for (const rec of records) {
+  counts.set(rec.user, (counts.get(rec.user) || 0) + 1);  // current-or-0, +1, set back
+}
+```
+
+**⭐ Map vs Object:**
+| | Object | Map |
+|---|--------|-----|
+| Keys | strings/symbols only (numbers→strings, objects→`"[object Object]"`) | **any type** (object, number, fn) kept as-is |
+| Order | not guaranteed | insertion order |
+| Size | `Object.keys(o).length` | `m.size` |
+| Iterate | `for...in`/`Object.entries` | `for...of` direct |
+| JSON | serializes | does NOT |
+Decision: **Object = fixed-shape record ("a thing")**; **Map = dynamic lookup/dictionary ("a table")**, runtime keys, non-string keys, frequent add/remove.
+
+⚠️ **Objects as Set members / Map keys = by REFERENCE, not content.** `{a:1}` and `{a:1}` are two different objects → both kept in a Set. To dedupe objects by a field, Set/Map on that field's value.
+
+**`WeakMap`/`WeakSet`** — object-only keys, don't block garbage collection; rare (internal caches). Know the name.
+
+**Backend:** `Set` for dedupe / membership (unique roles, seen ids); `Map` for in-memory caches/registries/tallies.
+
+---
+
+## Module 25 — JSON
+
+**JSON = text format for data.** Objects live in memory; to send/store them, convert to text. Every API request/response, config, DB field is JSON.
+```
+JS object (memory)  ⇄  JSON string (text)
+        stringify → / ← parse
+```
+
+```js
+JSON.stringify({ id: "PR-001", amount: 5000 });   // '{"id":"PR-001","amount":5000}'  (string)
+JSON.parse('{"id":"PR-001","amount":5000}').amount; // 5000  (object again)
+JSON.stringify(obj, null, 2);                      // pretty-print (null=replacer, 2=indent)
+```
+- **stringify** when sending a response / saving.
+- **parse** when receiving a request / reading stored data.
+
+**⭐ JSON vs JS object:**
+| | JS object | JSON |
+|---|-----------|------|
+| Is a | live value | **text string** |
+| Keys | can be unquoted | **must be `"double-quoted"`** |
+| Quotes | ' or " | **" only** |
+| Values | any (fn, undefined, Date, Map) | string/number/boolean/null/array/object only |
+| Trailing comma | ok | **not allowed** |
+
+**⭐ What JSON drops:** functions & `undefined` → omitted; `Date` → string; `Map`/`Set` → `{}`. (Why Map "doesn't JSON".)
+
+⚠️ `JSON.parse` **throws** (SyntaxError) on malformed text — always `try/catch` external input:
+```js
+try { const data = JSON.parse(input); } catch { console.log("Invalid JSON"); }
+```
+Log a friendly message, not the raw parser error.
+
+Analogy: object = a built Lego model; `stringify` = the flat instruction sheet you can mail; `parse` = rebuild from the sheet. The sheet can't describe motors/glue (functions/Dates) — they don't survive.
+
+**Backend:** every HTTP body is JSON. Express/NestJS auto-parse incoming JSON → `req.body` object, auto-stringify your response object → JSON. You work with objects; JSON is the wire format at the edges.
+
+*Next: Module 26 (Timers & Event Loop).*

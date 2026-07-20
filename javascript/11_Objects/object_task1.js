@@ -7,3 +7,7 @@ console.log(`${name} ${dept}`)
 
 let dkey = "dept"
 console.log(emp[dkey])
+
+emp[age]++
+console.log(emp.age)
+

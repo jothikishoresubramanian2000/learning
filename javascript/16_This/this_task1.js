@@ -6,5 +6,8 @@ const prRequest ={
     }
 }
 
+const prRequest2 ={
+    id:"PR-002",
+}
 prRequest.printIdNormal();
 prRequest.x();
