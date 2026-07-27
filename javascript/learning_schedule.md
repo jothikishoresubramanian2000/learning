@@ -47,10 +47,10 @@ Modules 1–12 completed: Introduction, Variables, Data Types, Operators, Type C
 - [x] **Day 9** — M22 Modules: CommonJS (`require`/`module.exports`), ES Modules (`import`/`export`), named vs default, dynamic import, closure-factory trap ✅
 - [x] **Day 10a** — M24 Collections: `Map`, `Set`, `WeakMap/WeakSet`, dedupe, tally pattern, Map vs Object ✅
 - [x] **Day 10b** — M25 JSON: `JSON.stringify/parse` round-trip, pretty print, JSON vs JS object, what JSON drops ✅
-- [ ] **Day 11** — M26 Timers & Event Loop: `setTimeout/setInterval/clear*`, event loop, `setImmediate`, `process.nextTick`
-- [ ] **Day 12** — M27 Node.js Basics (part 1): globals, `process.argv/env`, module system, `fs` (read/write, sync vs async)
-- [ ] **Day 13** — M27 Node.js Basics (part 2): `path`, `os`, `events`/EventEmitter, `__dirname/__filename`, `.env`
-- [ ] **Day 14** — M28 NPM: `package.json`, `npm init`, dependencies vs devDependencies, `node_modules`, lockfile, scripts, semver
+- [x] **Day 11** — M26 Timers & Event Loop: `setTimeout/setInterval/clear*`, event loop, micro/macro tasks, FIFO timers, why sync blocks the server ✅
+- [x] **Day 12** — M27 Node.js Basics (part 1): globals, `process.argv/env`, `fs` read/write/append, await-ordering, file+JSON ✅
+- [x] **Day 13** — M27 Node.js Basics (part 2): `path`+`__dirname`, `os`, `events`/EventEmitter, mkdir recursive, `.env` ✅
+- [x] **Day 14** — M28 NPM: `package.json`, dependencies vs devDependencies, `node_modules`, lockfile, scripts, semver, importing packages by bare name ✅
 - [ ] **Day 15** — M29 Debugging + M30 Best Practices: console methods, stack traces, VS Code debugger; clean code, folder structure, linting
 
 ---

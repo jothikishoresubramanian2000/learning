@@ -1034,4 +1034,180 @@ Analogy: object = a built Lego model; `stringify` = the flat instruction sheet y
 
 **Backend:** every HTTP body is JSON. Express/NestJS auto-parse incoming JSON → `req.body` object, auto-stringify your response object → JSON. You work with objects; JSON is the wire format at the edges.
 
-*Next: Module 26 (Timers & Event Loop).*
+---
+
+## Module 26 — Timers & the Event Loop
+
+**Timers:**
+```js
+const id = setTimeout(fn, ms);   clearTimeout(id);    // run ONCE after ms
+const id = setInterval(fn, ms);  clearInterval(id);   // run REPEATEDLY (must clear!)
+```
+`ms` is a **minimum** delay, not exact.
+
+**⭐ Event Loop — how single-threaded JS does async.** JS runs one thing at a time (call stack). Async work (timers, I/O, network) runs in **background APIs**; when done, callbacks wait in a **queue**; the **event loop** runs them only when the **call stack is empty** (all sync code finished).
+
+```js
+console.log("1");
+setTimeout(() => console.log("2"), 0);   // 0ms but still deferred
+console.log("3");
+// 1, 3, 2   ← sync first; "0" means "when stack is empty", not "now"
+```
+
+**⭐ Two queues (priority):**
+- **Microtasks** — Promise `.then`/`await`. Higher priority; ALL drained first.
+- **Macrotasks** — `setTimeout`/`setInterval`/I/O. Lower; ONE per loop turn.
+```js
+console.log("1");
+setTimeout(() => console.log("2"), 0);          // macro
+Promise.resolve().then(() => console.log("3")); // micro
+console.log("4");
+// 1, 4, 3, 2   ← sync → microtasks(Promises) → macrotasks(timers)
+```
+**Promises always beat timers.**
+
+**Two `setTimeout(fn, 0)`:** sooner delay wins; **same delay → registration order (FIFO)**. Don't build logic on timer ordering — use `await`.
+
+**Node extras:** `setImmediate` (after I/O), `process.nextTick` (before promises). Rare.
+
+Analogy: one chef (thread). Oven/boiling (timers/IO) go on a background rack; chef does all current chopping (sync) first, then checks the rack (event loop). Promise tickets are urgent (microtask) — done before oven timers (macrotask).
+
+**⭐ Backend why:** Node serves thousands of requests on ONE thread — while one waits on the DB (background), the loop serves others. So `await` doesn't block the server, but a **heavy sync loop DOES freeze everything** (blocks the single thread → all requests stall).
+
+---
+
+## Module 27 — Node.js Basics
+
+> **Why Node exists:** browsers sandbox JS (it runs code from strangers — can't be allowed near your files). Node = V8 taken out of the browser + file/network/OS access. Same language, powers the browser withheld. Before Node, servers used PHP/Java/Python; Node let JS run the backend too (and its tooling — npm, Vite, Jest — is what builds modern frontends).
+
+**Globals:** `console`, `process`, `global`/`globalThis`, `__dirname`, `__filename`.
+
+### `process` — the running program
+```js
+process.argv          // [nodePath, scriptPath, ...YOUR ARGS]  → real args start at [2]
+process.env.NAME      // environment variables
+process.cwd()         // where the command was RUN (≠ __dirname)
+process.exit(0); process.platform;
+```
+```bash
+APPROVAL_LIMIT=4000 node app.js PR-001 5000     # env before cmd, args after (bash)
+$env:VAR="x"; node app.js                        # PowerShell equivalent
+```
+⚠️ **argv and env are ALWAYS strings.** `"900" < "1000"` is `false` (text compare!). Convert with `Number()` before comparing/math.
+**Config rule:** secrets/limits live in env (`.env` file, git-ignored), never hardcoded. argv = what to work on this run; env = config for this environment.
+
+### `fs` — file system
+```js
+const fs = require("fs/promises");
+await fs.writeFile(p, text);           // overwrites
+const t = await fs.readFile(p, "utf8"); // without "utf8" → raw Buffer
+await fs.appendFile(p, "line\n");
+await fs.mkdir(dir, { recursive: true }); // ⭐ plain mkdir THROWS if it exists
+```
+⚠️ **`await` each step when order matters** — unawaited fs calls race (read may run before write finishes). Missing `await` → you get `Promise { <pending> }`, not the data.
+⚠️ **`...Sync` blocks the whole event loop** — never inside a request handler; startup config only.
+**File + JSON:** `readFile` → `JSON.parse`; `JSON.stringify(obj, null, 2)` → `writeFile`.
+
+**⭐ No `new Promise`/`setTimeout` needed here** — `fs/promises` already returns Promises because the delay is *real* disk I/O. You only create Promises to wrap timers or old callback APIs. Real code = consuming library Promises (`prisma`, `axios`, AWS SDK).
+
+### `path` — safe paths
+```js
+path.join(__dirname, "store", "prs.json");  // correct separator per OS
+path.basename(p); path.extname(p); path.dirname(p); path.resolve(p);
+```
+⚠️ **Relative paths resolve from `process.cwd()` (where you ran node), NOT the file's folder** — same code breaks when run from elsewhere. **Anchor real file access with `path.join(__dirname, ...)`.** Derive basename/extname from the path *variable*, never a retyped string.
+`__dirname`/`__filename` are CommonJS-only (not in `.mjs`).
+
+### `os` — machine info
+```js
+os.platform(); os.cpus().length; os.freemem(); os.totalmem(); os.hostname(); os.homedir();
+```
+Bytes → MB: `os.freemem() / 1024 / 1024`. Used for health checks / worker counts.
+⚠️ These are **functions — call with `()`**. (Node's `os` has a coercion quirk that makes `${os.freemem}` appear to work; no other library does that.)
+
+### `events` — EventEmitter
+```js
+class PrService extends EventEmitter {          // your class gains .on/.emit
+  submit(pr) { this.emit("pr.submitted", pr); } // announce, don't call
+}
+service.on("pr.submitted", fn);    // every time (many allowed)
+service.once("pr.submitted", fn);  // only the FIRST time
+service.off(name, fn); service.listenerCount(name);
+```
+Decoupling: the service never knows who listens. ⚠️ An `"error"` event with **no listener crashes the process** — always attach one.
+
+**Backend:** procIq reads all config from `process.env`, uses `path` for OS-safe paths, and event emitters for domain events (`user.created`).
+
+---
+
+## Module 28 — NPM
+
+**npm = Node Package Manager** — a public registry of reusable packages + a CLI to manage them.
+
+**`package.json`** — the project's ID card + recipe:
+```jsonc
+{ "name": "app", "version": "0.1.0",
+  "scripts": { "start": "node src/main.js", "test": "jest" },
+  "dependencies":    { "express": "^4.18.0" },   // needed at RUNTIME
+  "devDependencies": { "jest": "^29.7.0" } }      // only while DEVELOPING
+```
+```bash
+npm install express        # → dependencies
+npm install -D jest        # → devDependencies
+```
+Production installs skip devDependencies → smaller/safer deploys.
+
+- **`node_modules`** — where installed code lands (huge). **Never commit** (`.gitignore`); rebuild with `npm install`. `package.json` = recipe, `node_modules` = cooked meal.
+- **`package-lock.json`** — exact versions actually installed (incl. sub-deps) → identical installs everywhere. **Commit it; never edit by hand.**
+- **⭐ semver `MAJOR.MINOR.PATCH`**: `^4.18.0` allows minor+patch (`4.x`), `~4.18.0` patch only (`4.18.x`), `4.18.0` exact. `^` is default. npm fills the version in for you — don't hand-pin.
+- **Scripts** — `npm run dev`; `start`/`test` skip `run`. procIq uses dozens (`start:spine`, `db:migrate`).
+- **Other managers:** pnpm (procIq — faster, shared store, `pnpm-lock.yaml`), yarn.
+
+**⭐ Importing an installed package = bare name, NO path** (Node searches `node_modules`):
+```js
+const dayjs = require("dayjs");   // ✅  NOT "./node_modules/dayjs"
+import dayjs from "dayjs";
+```
+Built-ins (`fs`, `path`) and packages import identically. Read the package's **README** for what to import (default vs named) and how to use it — looking up docs is the real skill, not memorizing.
+
+Analogy: `package.json` = recipe card; `node_modules` = stocked pantry (rebuildable, never mailed); lockfile = receipt with exact brands/batches.
+
+---
+
+## Module 29 — Debugging
+
+**⭐ Reading a stack trace:**
+```
+file.js:2                                    ← file:line
+  return pr.amount.toFixed(2);               ← the code (^ marks the spot)
+TypeError: Cannot read properties of undefined (reading 'toFixed')   ← WHAT
+    at readPr    (file.js:2:20)   ← crash site (innermost, on top)
+    at processPr (file.js:5:10)   ← call chain (LIFO, read downward)
+    at main      (file.js:8:10)   ← where the bad data came from
+    at node:internal/...          ← IGNORE Node internals
+```
+Read the message FIRST; first `at` in YOUR file = crash site; **crash site ≠ bug site** — walk down the chain to where the bad data originated.
+
+**Error types:**
+| Error | Means |
+|-------|-------|
+| `Cannot read properties of undefined (reading 'x')` | did `.x` on undefined (missing field, forgot `await`) |
+| `x is not a function` | called a non-function (typo, bad import) |
+| `ReferenceError: x is not defined` | name never declared |
+| `ReferenceError: Cannot access 'x' before initialization` | TDZ — used const/let before its line |
+| `RangeError: Maximum call stack size exceeded` | infinite recursion |
+
+⚠️ **Silent wrong values (`NaN`, `undefined`) are worse than crashes** — no trace, flows downstream. `NaN` = arithmetic on a non-number; `undefined` where data was expected → suspect a missing `await`.
+
+**console beyond `.log`:**
+- `console.table(arrayOfObjects)` — real table
+- `console.dir(obj, { depth: null })` — full nesting (log truncates deep → `[Object]`)
+- `console.time("x")` / `console.timeEnd("x")` — elapsed ms
+- `console.log({ amount })` — prints name AND value
+- `console.error`/`warn` — go to stderr (log collectors treat as errors)
+
+**VS Code debugger:** click gutter → breakpoint → open the ENTRY file → **F5** → Node.js. Pauses there; inspect all variables + call stack; **F10** step over, **F11** step into, **F5** continue. Beats scattering logs. Terminal: `node --inspect-brk file.js` + `chrome://inspect`. `debugger;` statement = code breakpoint.
+
+**⭐ Method:** read error fully → find first line in YOUR file → form ONE hypothesis → test with one log/breakpoint → walk backward → narrow (binary search, don't scatter). **Core question: "what did I assume that isn't true?"** Every bug is a false assumption (array non-empty, field exists, value is a number, promise resolved).
+
+*Next: Module 30 (Best Practices).*

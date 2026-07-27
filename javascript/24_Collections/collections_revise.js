@@ -40,7 +40,7 @@ const prs = [
 const totals = prs.reduce((map, pr) => {
   map.set(pr.dept, (map.get(pr.dept) || 0) + pr.amount);
   console.log(map)
-  return map;                      // ⭐ must return the accumulator each time
+  return map;                     
 }, new Map());   
 
 console.log(totals)// ← start value = an empty Map

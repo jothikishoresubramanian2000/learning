@@ -1,0 +1,17 @@
+{
+    "app": "purveo",
+    "version": "0.1.0",
+
+    "dependencies": {
+        "dayjs": "1.11.21"
+
+    },
+    "devDependencies": {
+        "prettier": "3.9.6"
+    },
+
+    "scripts": {
+        "task1": "node npm_task1.js",
+        "check": "prettier --check *.js"
+    }
+}

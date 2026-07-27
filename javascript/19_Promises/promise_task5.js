@@ -54,6 +54,7 @@ validate(prList)
     raisePo(data.pr).then(po => ({ ...data, po }))  // add po to the bundle
   )
   .then(data => 
-    console.log(`${data.po} | approvers: ${data.approvers.length} | budget: ${data.budget}`)
+    console.log(data)
+    //console.log(`${data.po} | approvers: ${data.approvers.length} | budget: ${data.budget}`)
   )
   .catch(err => console.log("Flow failed:", err));

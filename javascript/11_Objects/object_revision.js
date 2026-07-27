@@ -15,4 +15,3 @@ console.log(Object.keys(pr))
 pr2.supplier.city = "Mumbai"
 console.log((pr.supplier.city));
 
-
