@@ -51,7 +51,7 @@ Modules 1–12 completed: Introduction, Variables, Data Types, Operators, Type C
 - [x] **Day 12** — M27 Node.js Basics (part 1): globals, `process.argv/env`, `fs` read/write/append, await-ordering, file+JSON ✅
 - [x] **Day 13** — M27 Node.js Basics (part 2): `path`+`__dirname`, `os`, `events`/EventEmitter, mkdir recursive, `.env` ✅
 - [x] **Day 14** — M28 NPM: `package.json`, dependencies vs devDependencies, `node_modules`, lockfile, scripts, semver, importing packages by bare name ✅
-- [ ] **Day 15** — M29 Debugging + M30 Best Practices: console methods, stack traces, VS Code debugger; clean code, folder structure, linting
+- [x] **Day 15** — M29 Debugging (stack traces, error types, console tools, VS Code debugger, method) + M30 Best Practices (naming, DRY, guards, folder-by-feature, Prettier/ESLint) ✅
 
 ---
 
@@ -59,13 +59,13 @@ Modules 1–12 completed: Introduction, Variables, Data Types, Operators, Type C
 
 > Console/logic first, then real HTTP. Apply everything from Phase 1–2.
 
-- [ ] **Day 16** — Project 1: Student Management (add/delete/update/find) — arrays of objects, functions
-- [ ] **Day 17** — Project 2: Employee Management (CRUD, salary, department, filtering)
-- [ ] **Day 18** — Project 3: Inventory System (products, stock, price, GST)
-- [ ] **Day 19** — Project 4: Expense Tracker (income, expense, balance, monthly report)
-- [ ] **Day 20** — Project 5: Library Management (books, issue, return, fine)
-- [ ] **Day 21** — Project 6 (part 1): Authentication Simulation — login, roles, permissions
-- [ ] **Day 22** — Project 6 (part 2): JWT concept, protecting actions
+- [x] **Day 16** — Project 1: Student Management — full CRUD on a Map, custom errors + instanceof, private state, manager/driver split ✅
+- [x] **Day 17** — Project 2: Employee Management — CRUD + querying (filter byDept, sort by salary, deptTotals, averageSalary), run() wrapper, list() returns values ✅
+- [x] **Day 18** — Project 3: Inventory System — stock rules (no overselling, positive-qty guards), GST pricing, low-stock + total-value reports; hit the read-with-side-effect (+=) bug ✅
+- [x] **Day 19** — Project 4: Expense Tracker — income/expense, running balance, monthly summary (date.slice(0,7) + tally); lesson: don't reshape data you don't need to ✅
+- [x] **Day 20** — Project 5: Library Management — linked entities (books/members), state transitions (available/issued) with guards, real date math (days overdue → fine) ✅
+- [x] **Day 21** — Project 6 (part 1): Auth Simulation — authN (hashed signup/login) + authZ (RBAC via Role/Permission frozen enums + role→permissions map); taught: authN/authZ, credentials, hashing, salt, roles, permissions, RBAC, JS enum pattern ✅
+- [x] **Day 22** — Project 6 (part 2): JWT simulation — sign token on login, verify per request (signature + expiry), tamper detection; taught: stateless, session vs token, JWT header.payload.signature, claims, exp, base64, signed-not-encrypted, Bearer token ✅
 - [ ] **Day 23** — Project 7 (part 1): Mini REST API in Node — HTTP server, routing, GET/POST
 - [ ] **Day 24** — Project 7 (part 2): PATCH/DELETE, status codes, JSON request/response
 - [ ] **Day 25** — Project 8 (part 1): SaaS backend — tenants, organizations, users data model

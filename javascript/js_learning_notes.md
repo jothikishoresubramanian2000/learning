@@ -1210,4 +1210,31 @@ Read the message FIRST; first `at` in YOUR file = crash site; **crash site ≠ b
 
 **⭐ Method:** read error fully → find first line in YOUR file → form ONE hypothesis → test with one log/breakpoint → walk backward → narrow (binary search, don't scatter). **Core question: "what did I assume that isn't true?"** Every bug is a false assumption (array non-empty, field exists, value is a number, promise resolved).
 
-*Next: Module 30 (Best Practices).*
+---
+
+## Module 30 — Best Practices
+
+How to write code others (and future-you) can read and trust. Not syntax — judgment.
+
+1. **Naming** (highest leverage — code is read 10×). Reveal intent (`elapsedDays` not `d`); booleans as yes/no (`isActive`, `hasPermission`); functions = verbs (`calculateTax`); data = nouns (`totalAmount`); consistent casing; a good name removes the need for a comment.
+2. **Small single-purpose functions** — one job each; if you need "and" to name it, split. (Controller→service→repository.)
+3. **DRY** — one source of truth; but don't over-abstract two things that change for different reasons.
+4. **`const` by default**, `let` only if reassigned, **never `var`**, every var declared (bare assignment throws in ES modules).
+5. **Fail fast / guard early** — validate at top, throw/return immediately, keep happy path flat.
+6. **Honest errors** — catch only what you handle; never silent-swallow (`catch {}`); typed errors + `instanceof`; services return DATA, not formatted strings.
+7. **Don't leak internal state** — never `return` your `#private` container; report functions pure (same state in → same answer out).
+8. **Comments explain WHY, not what** — `// month is 0-indexed, +1`, not `// increment i`.
+9. **Folder by feature** (`users/`, `roles/`), not by type — procIq's layout.
+10. **Tooling** — Prettier (auto-format), ESLint (catches bugs: unused vars, `==`, missing `await`, undeclared) before running.
+
+**Refactor lesson:** a nested `for`+`if`+`push` → `filter().map().filter()` pipeline: same output, reads like a sentence, no index bookkeeping. Improve code, never behavior.
+
+> **Meta-rule:** write for a tired version of you at 2am six months from now who forgot everything. Clarity beats cleverness — optimize for the reader.
+
+---
+
+## ✅ Phase 2 complete — Modules 13–30 (Intermediate JavaScript)
+
+Scope/closures, execution/hoisting, `this`, DOM/events, Promises, async/await, classes, error handling, modules, collections, JSON, timers/event loop, Node basics (process/fs/path/os/events), npm, debugging, best practices.
+
+*Next: Phase 3 — Real Backend Projects (Modules apply everything; first HTTP API).*
