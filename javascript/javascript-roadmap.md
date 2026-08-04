@@ -431,6 +431,41 @@
 
 ---
 
+## Phase 4.5 — Design Patterns (JS/TS)
+> **Goal:** name and study the reusable solution shapes you've been using unnamed,
+> and the ones procIq relies on. You met most in Python already — this re-sees them
+> in JS/TS and maps each to a real procIq file. ~2 days.
+> Do AFTER TypeScript (so examples can be typed) and before Phase 5 (where they concentrate).
+
+### Module 40.5 — Design Patterns (the ones procIq actually uses)
+Each pattern: **problem it solves → when to use → when NOT to → procIq example.**
+
+- **Factory** — a function/method that builds and returns objects (you built closure
+  factories in M13: `makeCounter`, `makeAccount`). Hides construction detail.
+- **Singleton / Module** — one shared instance across the app (module exports; NestJS
+  providers are singletons by default).
+- **Strategy** — swappable behavior passed in as a function/object; pick the algorithm
+  at runtime. *procIq:* `apps/spine/src/auth/strategies/jwt.strategy.ts` (Passport).
+- **Repository** — isolate data access behind a class so logic doesn't touch the DB
+  directly (your manager/service split). *procIq:* every `*.repository.ts`.
+- **Dependency Injection** — pass a class its dependencies instead of hardcoding `new`;
+  makes testing/swapping easy. *procIq:* NestJS constructor injection everywhere.
+- **Chain of Responsibility** — a pipeline of handlers, each does its bit then calls
+  `setNext`. *procIq:* `apps/spine/src/chain/handlers/` (auth→tenant→rate→session→forward).
+- **Observer / Pub-Sub** — emit an event; independent listeners react (M18/M27
+  EventEmitter). *procIq:* `@nestjs/event-emitter` (`user.created` → listeners).
+- **Adapter / Ports** — a common interface with swappable drivers behind it.
+  *procIq:* `mail-provider.interface` (log provider vs SendGrid).
+- **Facade** — a simple front over a complex subsystem (the service layer hides
+  repository + external calls from the controller).
+- **Decorator** — wrap/annotate behavior (TS decorators `@Injectable`, `@Get`) — M37/M44.
+
+**Task:** refactor one of your Phase 3 projects to *consciously* name its patterns
+(manager = Repository, `run()` wrapper = a mini Facade/error-boundary, closures =
+Factory), then read the cited procIq files and identify each pattern in real code.
+
+---
+
 ## Phase 5 — Production Backend Engineering
 > **Goal:** close the gap between roadmap-level code and a real production codebase
 > like **procIq-app** (NestJS + PostgreSQL/Prisma + AWS + Docker + tests).

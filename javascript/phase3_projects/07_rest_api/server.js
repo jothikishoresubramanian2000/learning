@@ -30,21 +30,98 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    if(req.method === "POST" && parts[0] ==="students"){
-        let body = ""
-        req.on("data",(chunks)=>{body += chunks;})
+    if(req.method === "PATCH" && parts[0]==="students" && parts[1]){
+        const id = parts[1]
+        let body =""
+        req.on("data",(chunks)=>{body+=chunks});
         req.on("end",()=>{
-            const jsonBody = JSON.parse(body)
-            students.set(jsonBody.id,jsonBody)
-            res.writeHead(201,({"content-type":"application/json"}))
-            res.end(JSON.stringify(students.get(jsonBody.id)))
-           
+            let stdobj
+            try{
+                stdobj =JSON.parse(body)
+            }
+            catch{
+                res.writeHead(400,{"content-type":"application/json"})
+                res.end(JSON.stringify({error: "Invalid JSON"}))
+                return;
+            }
+
+            if(!students.has(id)){
+                res.writeHead(404,{"content-type":"application/json"})
+                res.end(JSON.stringify({error:"id not exists"}))
+                return;
+            }
+            const {name,marks} =stdobj;
+            if(name !== undefined){
+                students.get(id).name = name
+            }
+            if(marks !== undefined){
+                students.get(id).marks = marks
+                
+            }
+            res.writeHead(200,{"content-type":"application/json"})
+            res.end(JSON.stringify(students.get(id)))
         })
         return;
+    }
+    if(req.method === "POST" && parts[0] ==="students"){
+        let body = ""
+        req.on("data", (chunk) => {
+            body += chunk;
+        });
+        req.on("end",()=>{
+            let jsonBody
+            try{
+                jsonBody = JSON.parse(body);
+            }
+            catch(err){
+                res.writeHead(400, {
+                    "Content-Type": "application/json"
+                });
+
+                res.end(JSON.stringify({
+                    error: "Invalid JSON"
+                }));
+
+                return;
+            }
+            
+
+            if(!jsonBody.id||!jsonBody.name){
+                res.writeHead(400,{"content-type":"application/json"})
+                res.end(JSON.stringify({error:"Missing fields"}))
+                return
+            }
+            if(students.has(jsonBody.id)){
+                res.writeHead(409,{"content-type":"application/json"})
+                res.end(JSON.stringify({error:"id already exists"})) 
+                return     
+            }
+            students.set(jsonBody.id,jsonBody)
+            res.writeHead(201,{"content-type":"application/json"})
+            res.end(JSON.stringify(students.get(jsonBody.id)))
+            return;
+        })
+        
+
+        return;
+    }
+
+    if(req.method ==="DELETE" && parts[0] ==="students"&&parts[1]){
+        const id = parts[1];
+        if(students.has(id)){
+            students.delete(id)
+            res.writeHead(204,{"content-type":"application/json"})
+            res.end()
+            return;
+        }
+        res.writeHead(404,{"content-type":"application/json"})
+        res.end(JSON.stringify({error:"id not exists"}))
+        return;
+
     }
     res.writeHead(404,({"content-type":"application/json"}))
     res.end(JSON.stringify({error:"Not route found"}))
 
 })
 
-server.listen(3001, () => console.log("Server on http://localhost:3001"));
+server.listen(3003, () => console.log("Server on http://localhost:3003"));

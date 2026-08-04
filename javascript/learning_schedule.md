@@ -66,9 +66,9 @@ Modules 1–12 completed: Introduction, Variables, Data Types, Operators, Type C
 - [x] **Day 20** — Project 5: Library Management — linked entities (books/members), state transitions (available/issued) with guards, real date math (days overdue → fine) ✅
 - [x] **Day 21** — Project 6 (part 1): Auth Simulation — authN (hashed signup/login) + authZ (RBAC via Role/Permission frozen enums + role→permissions map); taught: authN/authZ, credentials, hashing, salt, roles, permissions, RBAC, JS enum pattern ✅
 - [x] **Day 22** — Project 6 (part 2): JWT simulation — sign token on login, verify per request (signature + expiry), tamper detection; taught: stateless, session vs token, JWT header.payload.signature, claims, exp, base64, signed-not-encrypted, Bearer token ✅
-- [ ] **Day 23** — Project 7 (part 1): Mini REST API in Node — HTTP server, routing, GET/POST
-- [ ] **Day 24** — Project 7 (part 2): PATCH/DELETE, status codes, JSON request/response
-- [ ] **Day 25** — Project 8 (part 1): SaaS backend — tenants, organizations, users data model
+- [x] **Day 23** — Project 7 (part 1): first HTTP server — http.createServer, req/res, routing by method+url, GET all/one, URL params via split, run + curl; taught HTTP/REST/methods/status-codes/server/port ✅
+- [x] **Day 24** — Project 7 (part 2): full CRUD API — POST/PATCH/DELETE, body parsing via streams, proper status codes (200/201/204/400/404/409); lesson: restart server after code changes ✅
+- [x] **Day 25** — Project 8 (part 1): SaaS backend — multi-tenant data model, tenant-SCOPED user ops (isolation enforced), tenant-existence check via Dependency Injection; taught: tenant, multi-tenancy, DI ✅
 - [ ] **Day 26** — Project 8 (part 2): roles, workspaces, CRUD APIs
 - [ ] **Day 27** — Project 8 (part 3): validation, wiring it together (mirrors procIq shape)
 
@@ -89,6 +89,10 @@ Modules 1–12 completed: Introduction, Variables, Data Types, Operators, Type C
 - [ ] **Day 38** — M40 Rebuild SaaS in TS (part 1): typed models
 - [ ] **Day 39** — M40 (part 2): typed CRUD APIs
 - [ ] **Day 40** — M40 (part 3): typed validation + review
+
+### Phase 4.5 — Design Patterns (2 days)
+- [ ] **Day 40a** — M40.5 Patterns part 1: Factory, Singleton/Module, Strategy, Repository, DI — name them in your Phase 3 projects
+- [ ] **Day 40b** — M40.5 Patterns part 2: Chain of Responsibility, Observer, Adapter/Ports, Facade, Decorator — identify each in the cited procIq files
 
 ---
 
