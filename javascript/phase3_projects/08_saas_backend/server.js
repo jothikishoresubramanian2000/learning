@@ -1,8 +1,7 @@
 const http = require("http");
-const {DuplicateId,NotFound,TenantManagement} = require("./tenantService")
+const {DuplicateId,NotFound,ValidationError,TenantManagement} = require("./tenantService")
 
 const {UserDuplicateId,UserOrRoleNotFound,UserManagement} = require("./userService");
-const { type } = require("os");
 
 
 const myTenants = new TenantManagement()
@@ -21,16 +20,16 @@ function run(action, res) {
 
         let status = 500;
 
-        if (err instanceof DuplicateId ||
-            err instanceof UserDuplicateId) {
-
-            status = 409;
+        if (err instanceof ValidationError) {
+            status = 400;                        // bad input
         }
-
+        else if (err instanceof DuplicateId ||
+            err instanceof UserDuplicateId) {
+            status = 409;                        // conflict
+        }
         else if (err instanceof NotFound ||
                  err instanceof UserOrRoleNotFound) {
-
-            status = 404;
+            status = 404;                        // not found
         }
 
         res.writeHead(status, {
@@ -173,14 +172,18 @@ const server = http.createServer((req, res) => {
         if(tenantId != null){
             if(users != null){
                 run(()=>{
-                    const dlt = myUsers.removeUser(tenantId,userId)
-                    res.writeHead(200,{"content-type":"application/json"});
-                    res.end(JSON.stringify({user: "deleted"}));
+                    myUsers.removeUser(tenantId,userId)
+                    res.writeHead(204);            // 204 No Content — no body
+                    res.end();
                 },res)
                 return;
             }
         }
-        
+        return;   // route matched
     }
+
+    // no route matched → 404
+    res.writeHead(404,{"content-type":"application/json"})
+    res.end(JSON.stringify({error:"route not found"}))
 })
 server.listen(3003, () => console.log("Server on http://localhost:3003"));

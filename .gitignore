@@ -1,0 +1,27 @@
+# dependencies — rebuildable from package.json, never commit
+node_modules/
+
+# TypeScript compiled output
+dist/
+*.tsbuildinfo
+
+# environment / secrets
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+
+# python (you have some)
+__pycache__/
+*.pyc
+.venv/
+venv/

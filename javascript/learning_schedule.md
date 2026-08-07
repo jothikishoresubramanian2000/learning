@@ -69,8 +69,8 @@ Modules 1–12 completed: Introduction, Variables, Data Types, Operators, Type C
 - [x] **Day 23** — Project 7 (part 1): first HTTP server — http.createServer, req/res, routing by method+url, GET all/one, URL params via split, run + curl; taught HTTP/REST/methods/status-codes/server/port ✅
 - [x] **Day 24** — Project 7 (part 2): full CRUD API — POST/PATCH/DELETE, body parsing via streams, proper status codes (200/201/204/400/404/409); lesson: restart server after code changes ✅
 - [x] **Day 25** — Project 8 (part 1): SaaS backend — multi-tenant data model, tenant-SCOPED user ops (isolation enforced), tenant-existence check via Dependency Injection; taught: tenant, multi-tenancy, DI ✅
-- [ ] **Day 26** — Project 8 (part 2): roles, workspaces, CRUD APIs
-- [ ] **Day 27** — Project 8 (part 3): validation, wiring it together (mirrors procIq shape)
+- [x] **Day 26** — Project 8 (part 2): multi-tenant HTTP API — nested routes /tenants/:id/users, tenant scoping via URL, DI tenant-check, status codes; lessons: one-response-per-request, return-after-route, 404 fallback ✅
+- [x] **Day 27** — Project 8 (part 3): validation layer — ValidationError→400 vs NotFound→404 vs Duplicate→409, falsy input guards, validate-before-logic; mirrors procIq DTO/class-validator ✅
 
 ---
 

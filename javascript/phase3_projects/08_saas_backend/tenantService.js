@@ -12,12 +12,23 @@ class NotFound extends Error{
     }
 }
 
+// bad INPUT (missing/empty field, invalid value) → maps to HTTP 400
+class ValidationError extends Error{
+    constructor(message){
+        super(message)
+        this.name = "ValidationError"
+    }
+}
+
 class TenantManagement{
 
     #tenantData = new Map();
 
     createTenant(id,name){
 
+        if(!id|| !name){
+            throw new ValidationError("missing required fields")
+        }
         if(this.#tenantData.has(id)){
             throw new DuplicateId("id already exists")
         }
@@ -44,4 +55,4 @@ class TenantManagement{
 }
 
 
-module.exports = {DuplicateId,NotFound,TenantManagement}
+module.exports = {DuplicateId,NotFound,ValidationError,TenantManagement}

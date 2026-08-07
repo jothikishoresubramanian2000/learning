@@ -13,6 +13,9 @@ class UserOrRoleNotFound extends Error{
 }
 
 
+// reuse the shared ValidationError (bad input → 400)
+const { ValidationError } = require("./tenantService")
+
 const Role = {
     ADMIN: "admin",
     MEMBER: "member",
@@ -31,16 +34,19 @@ class UserManagement{
 
     addUser(tenantId,user){
 
-        // verify the tenant EXISTS before adding a user to it.
-        // getTenant throws NotFound if the tenant id is unknown — so a user can
-        // never be attached to a nonexistent tenant.
+        // validate input FIRST (guard early) — bad input → 400
+        if(!tenantId|| !user|| !user.id|| !user.name){
+            throw new ValidationError("missing required fields")
+        }
+        // THEN verify the tenant EXISTS (getTenant throws NotFound → 404 if unknown),
+        // so a user can never be attached to a nonexistent tenant.
         this.#tenants.getTenant(tenantId)
 
         if(this.#userData.has(user.id)){
             throw new UserDuplicateId("user already exists")
         }
         if(!(Object.values(Role)).includes(user.role)){
-            throw new UserOrRoleNotFound("role not found")
+            throw new ValidationError("invalid role")
         }
         const newUser = {tenantId,id:user.id,name:user.name,role:user.role}
         this.#userData.set(user.id,newUser)
@@ -52,6 +58,9 @@ class UserManagement{
     }
 
     getUser(tenantId,userId){
+        if(!tenantId|| !userId){
+            throw new ValidationError("missing required fields")
+        }
         if(this.#userData.has(userId)){
             if(this.#userData.get(userId).tenantId === tenantId){
                 return this.#userData.get(userId)
@@ -61,8 +70,12 @@ class UserManagement{
         else throw new UserOrRoleNotFound("user not found")
     }
     updateRole(tenantId,userId,roles){
+        if(!tenantId|| !userId|| !roles){
+            throw new ValidationError("missing required fields")
+        }
+
         if(!(Object.values(Role)).includes(roles)){
-            throw new UserOrRoleNotFound("role not found")
+            throw new ValidationError("invalid role")
         }
         if(this.#userData.has(userId)){
             if(this.#userData.get(userId).tenantId === tenantId){
