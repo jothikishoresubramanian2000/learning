@@ -1237,4 +1237,83 @@ How to write code others (and future-you) can read and trust. Not syntax — jud
 
 Scope/closures, execution/hoisting, `this`, DOM/events, Promises, async/await, classes, error handling, modules, collections, JSON, timers/event loop, Node basics (process/fs/path/os/events), npm, debugging, best practices.
 
-*Next: Phase 3 — Real Backend Projects (Modules apply everything; first HTTP API).*
+---
+
+## ✅ Phase 3 — Real Backend Projects (applied, no new syntax)
+
+8 projects. Recurring patterns: **manager/driver split**, private `#` state, custom errors + `instanceof`, `run()` error-boundary wrapper, guard-early, `list()` returns a COPY not the internal Map.
+
+1. Student — CRUD on a Map · 2. Employee — CRUD + querying · 3. Inventory — business rules; **read-with-side-effect (`+=`) bug** corrupted a total · 4. Expense — time-grouping via `date.slice(0,7)`; **don't reshape data you don't need to** · 5. Library — linked entities + date math (fine) · 6. Auth+JWT — hashing, RBAC, token sign/verify/tamper/expiry · 7. **REST API** — `http.createServer`, routing by method+url, body via stream events, status codes · 8. **SaaS backend** — multi-tenant, tenant-scoped ops, **DI**, nested routes, validation.
+
+**Server lessons:** one request = one response (double-write → `ERR_HTTP_HEADERS_SENT` crash); `return` after a matched route; 404 fallback mandatory; restart after code changes; **400 bad-input vs 404 not-found vs 409 conflict**.
+
+---
+
+# Phase 4 — TypeScript
+
+> TS = JS + a **type layer** checked by `tsc` **before** running. Types are compile-time only — stripped from output `.js`. Setup: `npm i -D typescript`, `npx tsc --init`, write `.ts`, `npx tsc` → `dist/*.js`. Use `outDir:"./dist"`, `declaration:false`; `strict:true` always.
+
+## Module 31 — Why TypeScript
+```
+JS:  write → RUN → 💥 bug (maybe in production)
+TS:  write → ❌ bug in editor → fix → compile → run clean
+```
+```ts
+function addTax(price: number): number { return price * 1.18; }
+addTax("hello");   // ❌ TS error in editor, BEFORE running
+```
+`tsc` checks types AND strips them → plain `.js`. Same bug: `.js` runs → silent `NaN`; `.ts` won't compile. `tsconfig.json` = compiler settings (`strict`, `outDir`, `target`).
+
+## Module 32 — Basic Types
+```ts
+let s: string; let n: number; let b: boolean;
+let arr: number[] = [1,2];              // array  (or Array<number>)
+let tup: [string, number] = ["K",24];  // tuple — fixed length/position
+```
+- **Inference** — TS infers from assignment; annotate params (can't infer) + empty declarations, not obvious ones.
+- ⚠️ **`any`** = checking OFF — avoid. ⭐ **`unknown`** = safe any — must **narrow** (`typeof`) before use (API data / `JSON.parse`).
+- `void` = returns nothing; `never` = never returns.
+
+## Module 33 — Interfaces & Types
+```ts
+interface User {
+  readonly id: string;   // can't reassign
+  name: string;
+  email?: string;        // optional
+  address: Address;      // nested
+}
+interface Employee extends Person { salary: number; }   // inherit + add
+```
+- `type` alias — same for objects, PLUS non-objects: `type ID = string`, `type Role = "a"|"b"`, `type Pair = [string,number]`. Unions need `type`.
+- interface = object shapes (models/DTOs); `type` = unions/primitives/tuples.
+- ⚠️ "declared but never read" = unused-var warning (tidiness), NOT a type error (doesn't block). vs "property missing/not assignable" (real, blocks).
+- ⭐ **Interface: types required, NO `async`, no body** (the contract). **Implementation: `async` ok, types inferred, has body.** `async` is a *how*; interface only cares return type is `Promise<...>`. Definition uses TYPES (`to: string`); calling uses VALUES (`"jk"`).
+
+## Module 34 — Functions with Types
+```ts
+function fn(req: string, opt?: number, def = "Hi", ...rest: number[]): string {}
+//          typed        optional      default(auto-optional) rest    return
+```
+- Params MUST be typed; return type optional (inferred) but good on public fns.
+- ⚠️ Can't combine `?` and `= default` (default already makes it optional). `?` → may be `undefined`; `= x` → always has a value.
+- ⭐ **Function type signature** (typing callbacks): `type Fn = (price: number) => number;` → `const gst: Fn = p => p*1.18`; used in `applyDiscount(price, fn: Fn)`.
+
+## Module 35 — Union, Literal & Enums
+```ts
+type Id = string | number;                 // UNION — of TYPES
+type Role = "admin" | "member" | "viewer"; // LITERAL UNION — exact VALUES
+enum Status { Active="active", Inactive="inactive" } // ENUM — named constants
+```
+- ⭐ **Narrowing** — prove the type before using its methods:
+```ts
+if (typeof id === "string") id.toUpperCase(); else id.toFixed(2);
+```
+- ⭐ **Literal union = compile-time role/status safety for FREE** — replaces hand-written `Object.values(Role).includes(role)`; `"superuser"` won't compile.
+- ⭐ **Discriminated union** — objects tagged by a literal; checking the tag narrows the shape:
+```ts
+type Result = {status:"ok";data:string} | {status:"error";message:string};
+if (r.status==="ok") r.data; else r.message;
+```
+- **enum vs literal union:** literal = zero runtime, can't iterate. enum = runtime object, CAN iterate (`Object.values(Status)`) + name-reference (`Status.Active`). Loop values → enum; just restrict → literal union (modern default).
+
+*Next: Module 36 (Generics).*
