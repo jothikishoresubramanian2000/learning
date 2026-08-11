@@ -1288,6 +1288,7 @@ interface Employee extends Person { salary: number; }   // inherit + add
 - interface = object shapes (models/DTOs); `type` = unions/primitives/tuples.
 - ⚠️ "declared but never read" = unused-var warning (tidiness), NOT a type error (doesn't block). vs "property missing/not assignable" (real, blocks).
 - ⭐ **Interface: types required, NO `async`, no body** (the contract). **Implementation: `async` ok, types inferred, has body.** `async` is a *how*; interface only cares return type is `Promise<...>`. Definition uses TYPES (`to: string`); calling uses VALUES (`"jk"`).
+- ⚠️ **GOTCHA — excess property checking (object literal vs variable):** passing/assigning an object LITERAL directly is checked strictly — extra props not in the type ERROR ("may only specify known properties"). The SAME object via a VARIABLE is fine (structural typing — "has at least the shape"). `getId({id,name})` ❌ but `const u={id,name}; getId(u)` ✅. Inline literals get a "probably a typo" safety net; variables don't. Right fix is usually: put the field in the interface. Catches typos: `{ timeut: 3000 }` inline → flagged.
 
 ## Module 34 — Functions with Types
 ```ts
