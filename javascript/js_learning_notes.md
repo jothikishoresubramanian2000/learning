@@ -1317,4 +1317,73 @@ if (r.status==="ok") r.data; else r.message;
 ```
 - **enum vs literal union:** literal = zero runtime, can't iterate. enum = runtime object, CAN iterate (`Object.values(Status)`) + name-reference (`Status.Active`). Loop values → enum; just restrict → literal union (modern default).
 
-*Next: Module 36 (Generics).*
+## Module 36 — Generics (a/b/c)
+
+**Generic = a type PARAMETER `<T>` filled in per use.** Carries a type from input to output, checked at compile time — keeps safety that `any` throws away.
+
+**36a — generic functions:**
+```ts
+function wrap<T>(item: T): T[] { return [item]; }
+wrap("hi");   // T=string inferred from argument → string[]
+```
+- `<T>` = placeholder type; `T` inferred from the argument at call time (`<string>` optional). Name is convention (`T`,`K`,`V`,`Item`).
+- vs `any`: `any` compiles but loses the type (runtime danger); generic preserves it (compile-time catch). The type flows argument→T→return→variable.
+
+**36b — constraints + generic interfaces:**
+```ts
+function logName<T extends { name: string }>(item: T) { item.name }  // T must have .name
+function pluck<T, K extends keyof T>(obj: T, key: K): T[K] { return obj[key]; } // key must be a real key
+interface Box<T> { value: T }        // generic interface
+type Pair<T> = [T, T]                 // generic type alias
+```
+- `extends` here = **constraint** ("must be assignable to this shape"), NOT class inheritance.
+- `keyof T` = union of T's keys; `K extends keyof T` = K is one of them; `T[K]` = that property's type.
+- Generic constraint KEEPS the full type (`<T extends HasId>(x:T):T`), vs `(x: HasId)` which narrows to just HasId.
+
+**36c — multiple params + real-world:**
+```ts
+function pairUp<A, B>(a: A, b: B): [A, B] { return [a, b]; }   // two independent placeholders
+Map<K, V>  Record<K, V>  Promise<T>  Array<T>                   // built-in generics
+type ScoreBoard = Record<"math"|"science", number>             // typed key→value object
+
+class Store<T extends { id: string }> {        // ⭐ generic repository — one class, any entity
+  private items = new Map<string, T>();
+  add(x: T): T { this.items.set(x.id, x); return x; }
+  get(id: string): T | undefined { return this.items.get(id); }
+  all(): T[] { return [...this.items.values()]; }
+}
+const users = new Store<User>();     // T=User → rejects non-Users
+```
+- ⭐ `Store<T>` = Project 8's manager, made generic: ONE class for User/Book/Product instead of one per entity, fully type-safe (a wrong-shaped object is rejected at compile time).
+- `<...>` inside always takes a TYPE (`User`, `number`), never a value.
+- **Function call → TS infers `<T>` (optional). Type annotation (`: ApiResponse<User>`) → nothing to infer → `<>` required.**
+- ⚠️ `get()` bug: `this.get(id)` = infinite recursion; use `this.items.get(id)`. ⚠️ No empty `interface X<>{}`.
+
+## Module 37 — Classes in TypeScript
+
+Typing JS classes (M23) + TS-only features.
+
+```ts
+class Account {
+  public owner: string;       // accessible anywhere (default)
+  private balance: number;    // only INSIDE the class (compile-time)
+  protected pin: string;      // class + subclasses
+  constructor(owner: string, balance: number) { this.owner = owner; this.balance = balance; }
+}
+```
+- ⭐ TS **declares properties with types** at the top (required in strict mode).
+- **Access modifiers:** `public` (anywhere), `private` (this class), `protected` (class + subclasses). `private` = compile-time only (gone in output JS); `#field` (M23) = runtime-enforced. Both fine.
+- ⭐ **Parameter properties** — modifier on a constructor param declares AND assigns in one place:
+```ts
+class Employee { constructor(public readonly id: string, private salary: number) {} }
+// = declare id/salary + this.id=id + this.salary=salary, no body needed
+```
+**This is the NestJS constructor style:** `constructor(private readonly repo: UserRepository) {}`. No modifier = plain param (no property created).
+- `readonly` — combine: `public readonly id` (can't reassign after construction).
+- ⭐ **`implements`** — class MUST provide everything an interface declares (missing method/wrong type → error). `class RbacGuard implements CanActivate`. vs `extends`: `extends` inherits real code from ONE class; `implements` only checks shape against interface(s) (many allowed, no code inherited).
+- ⭐ **`abstract`** — can't be instantiated; base with `abstract method(): T` (subclass MUST implement, signature must match) + concrete methods (inherited or overridden).
+- **Override rule:** keep the **signature** (params + return type), replace the **body**. `describe(): string` override must return a string (any string), can't return a number or add params.
+
+**Backend:** THE NestJS layer — every service/controller/guard is `class X implements Y` + `constructor(private readonly dep: Dep)`. Modules 33+34+36+37 = you can read any procIq class.
+
+*Next: Module 38 (Utility Types).*

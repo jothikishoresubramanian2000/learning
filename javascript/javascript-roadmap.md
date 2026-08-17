@@ -377,6 +377,13 @@
 - Type inference
 - Type annotations
 
+### Module 32b — Type Assertions & Operators (the small keywords)
+- **`as` — type assertion** ("treat this as type X"; compile-time only, no runtime check/convert). For values TS can't infer (e.g. `JSON.parse(x) as Partial<T>`). ⚠️ bypasses safety → validate after for untrusted data.
+- **`as const`** — narrow a value to its exact literal/readonly type (`["a","b"] as const` → readonly tuple of literals).
+- **`!` — non-null assertion** (`arr[0]!`, `user!.name`) — "trust me, not null/undefined." ⚠️ same "trust me" caveat as `as`.
+- **`satisfies`** — check a value matches a type WITHOUT widening it (keeps the specific type; modern TS).
+- Recap of related atoms met elsewhere: `typeof` narrowing (M35), `keyof` (M36), type guards / narrowing.
+
 ### Module 33 — Interfaces & Types
 - `interface`
 - `type` alias
