@@ -47,8 +47,9 @@ These are in memory (`js-learning-workflow`) but repeated here — follow **exac
 - ✅ **Phase 3 — Backend Projects (8 projects):** DONE. Student, Employee, Inventory, Expense, Library, Auth+JWT, **REST API**, **multi-tenant SaaS backend** (Projects in `phase3_projects/`).
 - ⏳ **Phase 4 — TypeScript (Modules 31–40):** IN PROGRESS in `phase4_typescript/`.
   - Done: 31 (Why TS), 32 (Basic Types), **32b (Assertions: `as`/`!`/`as const`/`satisfies` — added late as a found-gap atom)**, 33 (Interfaces/Types), 34 (Functions), 35 (Union/Literal/Enum), 36 (Generics a/b/c + keyof), 37 (Classes in TS).
-  - **CURRENT: Module 38 (Utility Types)** — types written & correct, BUT **PENDING:** add `console.log`s to `util_task2.ts` + `util_task3.ts` (they produce no output), AND **`32b_assertions/assert_task.ts` is EMPTY** (the `!`/`as const`/`as`+validate task — not done yet).
-  - Remaining Phase 4: **39 (TS with Node — ts-node/tsx, @types, typing Express)**, **40 (Rebuild SaaS backend in TS — 3 days)**.
+  - ✅ **Module 38 (Utility Types) DONE** — Partial/Pick/Omit/Record/Readonly + DTO composition, all verified with output.
+  - ✅ **Module 32b (Assertions) DONE** — taught + practiced step-by-step (`!`, `as const`, `as`+validate untrusted data incl. WHY `Partial<T>` not full `T` when asserting unverified JSON). Notes written.
+  - **CURRENT / NEXT:** Module 39 — TypeScript with Node (ts-node/tsx, `@types/*`, typing Express request/response). Then Module 40 (Rebuild SaaS backend in TS, 3 days).
 - ⬜ **Phase 4.5 — Design Patterns (Modules 40.5):** added on his request, after TS. Factory/Singleton/Strategy/Repository/DI/Chain-of-Responsibility/Observer/Adapter/Facade/Decorator — each mapped to a real procIq file.
 - ⬜ **Phase 5 — Production (Modules 41–50):** Node/Express, PostgreSQL+RLS, Prisma, NestJS, Auth/Cognito, messaging/Redis/SQS, AWS/CDK, Testing/Jest, DevOps/Docker/Nx, Capstone.
 
@@ -84,10 +85,10 @@ These are in memory (`js-learning-workflow`) but repeated here — follow **exac
 
 ## 7. HOW TO PICK UP RIGHT NOW (next action)
 
-1. He owes: prints in `38_utility_types/util_task2.ts` + `util_task3.ts`, and the empty `32b_assertions/assert_task.ts` (do the `!`/`as const`/`as`+validate task). Check those.
-2. Then **Module 39 — TypeScript with Node** (set up `tsx`/`ts-node` to run `.ts` directly, `@types/*`, typing an Express-style request/response). Then Module 40 (rebuild the SaaS backend, typed).
-3. Keep the rhythm: teach atomically w/ syntax examples → create empty files → 3 no-hint tasks (Input/Output) → he writes → "done check" → I read+run+feedback → append notes → tick schedule.
-4. **caveman mode** is active in his terminal (a plugin) — responses come out terse/fragment-style; code stays normal. Not something you control; just be aware his hook compresses tone.
+1. **Module 39 — TypeScript with Node** next (set up `tsx`/`ts-node` to run `.ts` directly, `@types/*`, typing an Express-style request/response). Then Module 40 (rebuild the SaaS backend, typed, 3 days).
+2. Keep the rhythm: teach atomically w/ syntax examples → create empty files → 3 no-hint tasks (Input/Output) → he writes → "done check" → I read+run+feedback → append notes → tick schedule.
+3. **caveman mode** is active in his terminal (a plugin) — responses come out terse/fragment-style; code stays normal. Not something you control; just be aware his hook compresses tone.
+4. Note: if a module gets rushed/skipped-feeling, he may ask to redo it **step-by-step, one atom at a time** (concept→tiny example→his one-piece task→check→next atom) instead of all-3-tasks-at-once. Honor that pacing when asked.
 
 ## 8. THE FILES (all in `d:\learning\javascript\`)
 

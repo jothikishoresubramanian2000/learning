@@ -78,6 +78,7 @@ Modules 1—12 completed: Introduction, Variables, Data Types, Operators, Type C
 
 - [x] **Day 28** — M31 Why TypeScript: type safety, compile vs runtime, `tsc`, `tsconfig.json`, install & first compile
 - [x] **Day 29** — M32 Basic Types: `string/number/boolean/null/undefined`, `any/unknown/never/void`, arrays, tuples, inference
+- [x] **Day 29b** — M32b Type Assertions (found-gap atom, added mid-Phase-4): `!` non-null, `as const`, `as`+validate untrusted data, `satisfies` ✅
 - [x] **Day 30** — M33 Interfaces & Types: `interface`, `type`, `?` optional, `readonly`, nested, extending
 - [x] **Day 31** — M34 Functions with Types: param/return types, optional/default, function signatures
 - [x] **Day 32** — M35 Union, Literal & Enums: `A|B`, literal types, `enum`, narrowing, discriminated unions

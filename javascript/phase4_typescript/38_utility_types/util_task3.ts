@@ -18,3 +18,6 @@ const gEmp: PublicEmployee = {id: "EMP-003",name:"Jk",salary: 20}
 // example - interface CreateEmployee {name: string; salary: number; ssn: string }
 //again for update. same, just optional, but we need to write again
 //interface UpdateEmployeesss {name?: string; salary?: number; ssn?: string }
+console.log(emp1)     
+console.log(updateEmp) 
+console.log(gEmp)      

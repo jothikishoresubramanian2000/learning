@@ -1386,4 +1386,40 @@ class Employee { constructor(public readonly id: string, private salary: number)
 
 **Backend:** THE NestJS layer — every service/controller/guard is `class X implements Y` + `constructor(private readonly dep: Dep)`. Modules 33+34+36+37 = you can read any procIq class.
 
-*Next: Module 38 (Utility Types).*
+## Module 32b — Type Assertions & Operators
+
+⭐ **`!` non-null assertion** — "trust me, not null/undefined" (no runtime check):
+```ts
+const last = nums.at(-1)!;   // at() returns number|undefined; ! drops the undefined
+last.toFixed(2);              // now allowed
+```
+
+⭐ **`as const`** — lock a value to its EXACT literal type + make it readonly:
+```ts
+const config = { env: "prod", retry: 3 } as const;
+config.retry = 9;   // ❌ readonly
+```
+Without it, `{env:"prod"}` widens to `{env: string}`; `as const` keeps `"prod"` exactly and freezes the object.
+
+⭐ **`as Type`** — type assertion, "treat this as type X" (compile-time only, no conversion/check). For values TS can't infer (`JSON.parse` → `any`):
+```ts
+const parsed = JSON.parse(raw) as Partial<Shape>;   // loosest HONEST shape for untrusted data
+if (typeof parsed.id === "string") { ... }           // ⭐ REQUIRED verification after asserting
+```
+⚠️ **Why `Partial<T>` not `T` when asserting untrusted data:** asserting the full `T` is a LIE if the data might not match — TS believes you, compiles clean, then **crashes at runtime**. `Partial<T>` is honest ("maybe has these fields"), forcing/justifying a `typeof` check before use. Assert loosest-honest, then narrow with a real check — never assert full confidence on unverified data.
+
+⭐ **`satisfies`** (modern) — checks a value matches a type WITHOUT widening it (unlike `:` which can widen/lose specifics):
+```ts
+const routes: Record<string, string> = { home: "/", about: "/about" };
+routes.xyz;   // ❌ NOT caught — Record<string,string> forgot the exact keys
+
+const routes2 = { home: "/", about: "/about" } satisfies Record<string, string>;
+routes2.xyz;  // ✅ caught — TS remembers ONLY home/about exist
+```
+Use when you want validation AND to keep working with the precise inferred shape after (config objects, route/permission maps).
+
+**Assert vs prove:** `as`/`!` = "trust me" (no runtime check, you take the risk). `typeof`/`in` narrowing = "prove it" (real check). Prefer proving; assert only when TS genuinely can't know (parsed JSON, DOM queries).
+
+**Backend:** procIq's Redis cache read: `JSON.parse(raw) as Partial<TenantHostCacheEntry>` then `typeof parsed.tenantId !== 'string' → return null` — assert loosely, verify, bail if malformed. Exactly this pattern.
+
+*Next: Module 39 (TypeScript with Node).*
