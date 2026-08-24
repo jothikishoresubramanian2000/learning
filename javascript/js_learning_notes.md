@@ -1422,4 +1422,44 @@ Use when you want validation AND to keep working with the precise inferred shape
 
 **Backend:** procIq's Redis cache read: `JSON.parse(raw) as Partial<TenantHostCacheEntry>` then `typeof parsed.tenantId !== 'string' → return null` — assert loosely, verify, bail if malformed. Exactly this pattern.
 
-*Next: Module 39 (TypeScript with Node).*
+## Module 39 — TypeScript with Node
+
+**Run `.ts` directly** — no manual `tsc`+`node` two-step:
+```bash
+npm i -D tsx
+npx tsx file.ts          # compiles in-memory + runs, one command
+npx tsx watch file.ts    # auto-rerun on save
+```
+`ts-node` = older equivalent (procIq's `spine` uses `node --watch -r ts-node/register src/main.ts`). `tsx` simpler for learning.
+
+⭐ **`@types/*` — types for JS libraries:**
+```bash
+npm i express            # the library (plain JS)
+npm i -D @types/express   # JUST its type definitions (devDependency, stripped at build)
+```
+Without `@types/X`, importing `X` gives untyped/`any` — no autocomplete, no safety. Some packages ship their own types (no separate `@types` needed).
+
+**Typed Express request/response:**
+```ts
+import express, { Request, Response } from "express";
+const app = express();
+
+app.get("/students/:id", (req: Request<{id:string}>, res: Response) => {
+  res.json({ id: req.params.id });        // req.params typed, res.json expects an object
+});
+
+interface Body { name: string; marks: number }
+app.post("/students", (req: Request<{}, {}, Body>, res: Response) => {
+  const { name, marks } = req.body;        // typed via the 3rd generic param
+  res.status(201).json({ name, marks });
+});
+```
+`Request<Params, ResBody, ReqBody>` = a **generic interface** (M36) — fill in each shape.
+
+**Node tsconfig essentials:** `module:"commonjs"`, `esModuleInterop:true` (clean `import x from "y"`), `skipLibCheck:true` (skip checking node_modules' `.d.ts`, faster).
+
+⚠️ Gotchas hit: POST needs `Content-Type: application/json` header + `app.use(express.json())`, else `req.body` is empty. PowerShell's `curl` ≠ real curl (`curl.exe`); quoting differs bash vs PowerShell. Always Ctrl+C a server before restarting (EADDRINUSE).
+
+**Backend:** this IS procIq's dev setup — `ts-node --watch`, `@types/node`, typed request/response (NestJS wraps this in decorators, but the underlying shape is identical).
+
+*Next: Module 40 (Rebuild the SaaS Backend in TS).*

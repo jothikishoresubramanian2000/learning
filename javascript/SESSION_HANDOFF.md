@@ -48,8 +48,9 @@ These are in memory (`js-learning-workflow`) but repeated here — follow **exac
 - ⏳ **Phase 4 — TypeScript (Modules 31–40):** IN PROGRESS in `phase4_typescript/`.
   - Done: 31 (Why TS), 32 (Basic Types), **32b (Assertions: `as`/`!`/`as const`/`satisfies` — added late as a found-gap atom)**, 33 (Interfaces/Types), 34 (Functions), 35 (Union/Literal/Enum), 36 (Generics a/b/c + keyof), 37 (Classes in TS).
   - ✅ **Module 38 (Utility Types) DONE** — Partial/Pick/Omit/Record/Readonly + DTO composition, all verified with output.
-  - ✅ **Module 32b (Assertions) DONE** — taught + practiced step-by-step (`!`, `as const`, `as`+validate untrusted data incl. WHY `Partial<T>` not full `T` when asserting unverified JSON). Notes written.
-  - **CURRENT / NEXT:** Module 39 — TypeScript with Node (ts-node/tsx, `@types/*`, typing Express request/response). Then Module 40 (Rebuild SaaS backend in TS, 3 days).
+  - ✅ **Module 32b (Assertions) DONE** — taught + practiced step-by-step (`!`, `as const`, `as`+validate untrusted data incl. WHY `Partial<T>` not full `T` when asserting unverified JSON; `satisfies`). Notes written.
+  - ✅ **Module 39 (TS with Node) DONE** — `tsx` direct execution (replaced tsc+node two-step), `@types/express`/`@types/node`, typed Express `Request`/`Response`/body, in `39_ts_with_node/` (its own package.json + express installed there).
+  - **CURRENT / NEXT: Module 40 — Rebuild the SaaS Backend in TS** (3 days: typed models, typed CRUD APIs, typed validation). This re-does Phase-3's Project 8 (multi-tenant backend) fully typed — the last module of Phase 4.
 - ⬜ **Phase 4.5 — Design Patterns (Modules 40.5):** added on his request, after TS. Factory/Singleton/Strategy/Repository/DI/Chain-of-Responsibility/Observer/Adapter/Facade/Decorator — each mapped to a real procIq file.
 - ⬜ **Phase 5 — Production (Modules 41–50):** Node/Express, PostgreSQL+RLS, Prisma, NestJS, Auth/Cognito, messaging/Redis/SQS, AWS/CDK, Testing/Jest, DevOps/Docker/Nx, Capstone.
 

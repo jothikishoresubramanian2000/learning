@@ -85,8 +85,8 @@ Modules 1—12 completed: Introduction, Variables, Data Types, Operators, Type C
 - [x] **Day 33** — M36 Generics (part 1): generic functions, why generics
 - [x] **Day 34** — M36 Generics (part 2): generic interfaces, constraints (`extends`), multiple params
 - [x] **Day 35** — M37 Classes in TS: `public/private/protected`, parameter properties, `readonly`, `implements`, abstract ✅
-- [ ] **Day 36** — M38 Utility Types: `Partial/Required/Pick/Omit/Record/Readonly/ReturnType/Parameters`
-- [ ] **Day 37** — M39 TS with Node: project setup, `ts-node/tsx`, `@types/*`, typing request/response
+- [x] **Day 36** — M38 Utility Types: `Partial/Pick/Omit/Record/Readonly` + DTO composition (Create/Update/Public from one base) ✅
+- [x] **Day 37** — M39 TS with Node: `tsx` direct execution, `@types/express`+`@types/node`, typed Express Request/Response + typed body ✅
 - [ ] **Day 38** — M40 Rebuild SaaS in TS (part 1): typed models
 - [ ] **Day 39** — M40 (part 2): typed CRUD APIs
 - [ ] **Day 40** — M40 (part 3): typed validation + review
