@@ -341,6 +341,70 @@
 
 ---
 
+## Phase 11 — Closing the Gap: purveo-app Production Techniques
+> Found via a direct read-only audit of the real `purveo-app` repo (2026-08-25) — concrete
+> libraries/patterns actually in production use there that no module above names explicitly.
+> Do this **after finishing every phase above** (this roadmap + the JS/TS backend roadmap) —
+> every underlying concept these modules lean on (AsyncLocalStorage, cookies, Redis, S3, React
+> Query/Zustand, Axios) is already taught; this phase just names and wires together the specific
+> real-world techniques built on top of them. **Not covered here, and not coverable by any
+> language curriculum:** procurement business-domain vocabulary (SoD rules, buying authority,
+> budget/cost-centre semantics, etc.) and raw fluency/speed at production scale — both come only
+> from reading and contributing to the real repo itself.
+
+### Module 56 — Monorepo Wiring & Request Context
+- **TS path aliases in a pnpm/Nx monorepo** — `tsconfig.base.json`'s `paths` map
+  (`@prociq/domain-types` → `libs/domain-types/src/index`, etc.); several of these point at
+  libs with no `package.json` at all — resolved purely through the path alias, not a real
+  installed package.
+- **`nestjs-cls`** — the concrete library behind "AsyncLocalStorage" (→ Module 46):
+  `ClsModule.forRoot()`, `ClsMiddleware`, `ClsGuard` (needed by hand wherever a request doesn't
+  flow through normal HTTP middleware — e.g. a WebSocket connection), `@UseCls()`, and the
+  static escape hatch `ClsServiceManager.getClsService()` for code that can't be a DI provider
+  (a logger mixin, a Prisma `$extends` hook built at module init).
+- **Module-boundary-via-public-interface-lib** — the architectural rule (Nx-lint-enforced) that
+  one module never reaches into another module's internals; modules talk only through a shared
+  `*-api` lib or `EventEmitter2`. Note: on disk today several of these `*-api` libs are still
+  aspirational path aliases with no code behind them yet — the rule is real, the libs are a
+  work in progress.
+> Study: `libs/shared-utils/src/request-context.ts`, `apps/spine/src/app.module.ts`,
+> `tsconfig.base.json`.
+
+### Module 57 — Multi-Tenant Request Routing (Backend + Frontend, mirrored)
+- **Backend: host/subdomain → tenant resolution** — `HostContextMiddleware` derives admin-host
+  vs. tenant-host from `req.hostname`; a Redis-cached `HostResolverService` resolves subdomain →
+  tenant id; guards (`AdminHostGuard`, `TenantReconcileGuard`) enforce it and catch a
+  cross-tenant token replayed on the wrong subdomain. This is the request-side half that sits
+  above RLS (M42, the DB-side half).
+- **Frontend: the same resolution, client-side** — parsing `window.location.hostname` against a
+  base domain to decide which "app" (admin vs. tenant) to render, and the cookie implications of
+  subdomain-scoped sessions (`Domain=` cookies; why `lvh.me` — a real public domain that resolves
+  to `127.0.0.1` — is used locally instead of `localhost`, since browsers won't share
+  `Domain=localhost` cookies across `*.localhost` subdomains).
+- **Feature flags** — tenant-scoped flags stored in Postgres, Redis-cached with explicit
+  invalidation on write, vs. a separate env-var-only set of "platform flags" for destructive
+  platform-only operations (deliberately kept out of the tenant-writable table).
+- **S3 presigned upload/download** — `PutObjectCommand`/`getSignedUrl` for direct-to-S3 uploads
+  from the browser, `HeadObjectCommand` to verify the object actually landed before trusting it,
+  tenant-prefixed keys.
+> Study: `apps/spine/src/common/middleware/host-context.middleware.ts`,
+> `apps/spine/src/common/host-resolver.service.ts`, `apps/compass/src/lib/host.ts`,
+> `apps/spine/src/feature-flags/`, `apps/spine/src/storage/storage.service.ts`.
+
+### Module 58 — Frontend Production Patterns
+- **TanStack Table** — `useReactTable`, `flexRender`, column defs,
+  `getCoreRowModel`/`getSortedRowModel`/`getPaginationRowModel`, manual vs. client-side
+  pagination/filtering — the real table library behind any production data grid, distinct from
+  hand-rendering a `<table>`.
+- **httpOnly-cookie auth + silent-refresh Axios interceptor** — no client-held JWT at all; a 401
+  triggers one shared in-flight `POST /auth/refresh` (concurrent 401s don't each trigger their
+  own refresh — they share the one promise), then replays the original request once; 403 (valid
+  token, no permission) is handled differently from 401 (expired, refreshable).
+> Study: `apps/compass/src/components/ui/data-table/DataTable.tsx`, and Compass's current Axios
+> setup (`src/api/shared/axios.wrapper.ts`).
+
+---
+
 ## Suggested order
 
 ```
@@ -350,10 +414,11 @@ HTML (1-7) → CSS (8-17) → DOM/JS (18-21)          the platform
   → TS+React (40-41) → tooling/testing (42-45)      production quality
   → Angular (46-51)                                 second framework
   → master: Next.js, real-time, Nx (52-55)
+  → purveo-app gap-closing (56-58)                  read/write the real repo
 ```
 
 **Timeline (2 hrs/day):** ~90–110 days to strong intermediate across React + Angular.
-React alone (employable): ~50–60 days (Modules 1-45).
+React alone (employable): ~50–60 days (Modules 1-45). Add ~3 days for Modules 56-58.
 
 ## Connects to your backend work
 - You built the **API** these frontends call (BE Phase 3).

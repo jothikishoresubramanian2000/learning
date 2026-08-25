@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2021",
+    "esModuleInterop": true,
+    "types": ["node"],
+    "declaration": false,
+    "declarationMap": false,
+    "outDir": "./dist",
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "strict": true,
+    "skipLibCheck": true
+  }
+}
