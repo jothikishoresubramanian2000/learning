@@ -87,8 +87,8 @@ Modules 1—12 completed: Introduction, Variables, Data Types, Operators, Type C
 - [x] **Day 35** — M37 Classes in TS: `public/private/protected`, parameter properties, `readonly`, `implements`, abstract ✅
 - [x] **Day 36** — M38 Utility Types: `Partial/Pick/Omit/Record/Readonly` + DTO composition (Create/Update/Public from one base) ✅
 - [x] **Day 37** — M39 TS with Node: `tsx` direct execution, `@types/express`+`@types/node`, typed Express Request/Response + typed body ✅
-- [ ] **Day 38** — M40 Rebuild SaaS in TS (part 1): typed models
-- [ ] **Day 39** — M40 (part 2): typed CRUD APIs
+- [x] **Day 38** — M40 Rebuild SaaS in TS (part 1): typed models ✅
+- [x] **Day 39** — M40 (part 2): typed CRUD APIs ✅
 - [ ] **Day 40** — M40 (part 3): typed validation + review
 
 ### Phase 4.5 — Design Patterns (2 days)

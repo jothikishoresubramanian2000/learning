@@ -22,5 +22,7 @@ const pr1 = {id:"PR-999"}
 const pr2 = {id:"PR-001"}
 
 flow(pr1)
+console.log("Hi")
 flow(pr2)
+console.log("Hi")
 
