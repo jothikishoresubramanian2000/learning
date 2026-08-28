@@ -1463,3 +1463,66 @@ app.post("/students", (req: Request<{}, {}, Body>, res: Response) => {
 **Backend:** this IS procIq's dev setup — `ts-node --watch`, `@types/node`, typed request/response (NestJS wraps this in decorators, but the underlying shape is identical).
 
 *Next: Module 40 (Rebuild the SaaS Backend in TS).*
+
+## Module 40 — Rebuild the SaaS Backend in TS (3-day project: typed models → typed CRUD → typed validation)
+
+**Part 1 — Typed models, FK-style, not nested:**
+```ts
+interface Org { id: string; tenantId: string; name: string; }   // reference, not a nested Tenant object
+```
+Each entity keeps its own identity + a plain `string` reference to its parent (mirrors a DB foreign key / Prisma relation). Nesting the parent object instead would duplicate its data and go stale the moment the parent is updated.
+
+⭐ **Runtime-checkable literal union — `as const` + indexed access type:**
+```ts
+const ROLES = ["admin", "member", "viewer"] as const;
+type Role = typeof ROLES[number];                                  // union — NOT the tuple type ["admin","member","viewer"]
+const isValidRole = (x: string): x is Role => (ROLES as readonly string[]).includes(x);
+```
+A `type` alone vanishes at runtime — no array left to `.includes()` against for untrusted input. `as const` keeps `ROLES` a real runtime array AND locks each element to its exact literal; `typeof ROLES[number]` (an **indexed access type** — "the union of every element type in this tuple") derives `Role` straight from it, so the type and the runtime values can never drift apart. `x is Role` is a **type predicate** — narrows `x` to `Role` at every call site once the function returns `true`.
+
+**Part 2 — one generic CRUD engine instead of three hand-written copies:**
+```ts
+abstract class Store<T extends { id: string }> {
+  protected data: Map<string, T> = new Map();
+  create(item: T): T { /* has()/set() */ }
+  getById(id: string): T { /* has()/get() or throw NotFoundError */ }
+  list(): T[] { return [...this.data.values()]; }
+  update(id: string, patch: Partial<T>): T {
+    const existing = this.getById(id);
+    const updated = { ...existing, ...patch };     // spread-merge — only patch's OWN present keys overwrite
+    this.data.set(id, updated);
+    return updated;
+  }
+  delete(id: string): boolean { return this.data.delete(id); }   // Map#delete already IS the boolean
+}
+
+class OrgStore extends Store<Org> {
+  constructor(private readonly tenants: TenantStore) { super(); }
+  override create(item: Org): Org {
+    this.tenants.getById(item.tenantId);   // parent-existence check first (throws if missing)
+    return super.create(item);             // THEN delegate to the base logic — don't reimplement it
+  }
+}
+```
+- `T extends { id: string }` — a generic **constraint**, not inheritance: "whatever T is, it must at least have this shape."
+- `abstract` blocks `new Store()` directly (meaningless with no concrete `T`) while `new OrgStore()` works fine. Unlike `interface`, an `abstract class` CAN hold fully-implemented methods — `abstract` here only exists to stop direct instantiation, not to force subclasses to fill anything in.
+- `override create()` + `super.create(item)` — the same `super` idea from constructors (M23), now applied to a regular method: check the extra thing, then hand off to the parent's real logic instead of copy-pasting it.
+- ⚠️ **`private`/`#` vs `protected`:** a subclass method (`listByTenant`, etc.) needs direct access to `data` — `private`/`#` block that even from a subclass; `protected` allows class + subclasses, while still blocking the outside world entirely.
+
+**Part 3 — validating untrusted input at the boundary:**
+```ts
+function parseTenantInput(raw: unknown): Tenant {
+  const data = raw as Partial<Tenant>;                                // loosest-honest assertion (M32b)
+  if (typeof data !== "object" || data === null) throw new ValidationError("...");
+  if (typeof data.id !== "string" || !data.id) throw new ValidationError("...");
+  if (typeof data.name !== "string" || !data.name) throw new ValidationError("...");
+  return { id: data.id, name: data.name };                            // only now is the FULL type honest
+}
+```
+- `unknown` (not `any`) is the correct type for "could be anything, from outside" — TS refuses to let you touch an `unknown` at all until you've narrowed it; `any` would let every one of these checks be skipped, crashing at runtime instead.
+- This is the actual, complete version of M32b's "assert `Partial<T>`, then verify" rule — before it was only a warning; here it's a real, reusable boundary function.
+- Reuse existing validators instead of re-checking by hand: `parseUserInput`'s role check calls `isValidRole` (built in Part 1) — it doesn't reimplement the role check inline.
+
+**Backend:** this whole module IS procIq's real shape. `Store<T>` mirrors procIq's `*.repository.ts` files (Repository pattern — named explicitly in Module 40.5 next). `parseXInput` mirrors a NestJS DTO + global `ValidationPipe` boundary (Module 44). `ValidationError`/`NotFoundError`/`DuplicateIdError` map directly to the 400/404/409 status mapping you built by hand back in Phase 3.
+
+*Next: Phase 5 — Production Backend Engineering (Module 41). Design Patterns moved to the end of `frontend-roadmap.md` (Module 59), done together with frontend examples.*

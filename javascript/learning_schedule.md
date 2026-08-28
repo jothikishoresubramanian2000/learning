@@ -89,11 +89,11 @@ Modules 1—12 completed: Introduction, Variables, Data Types, Operators, Type C
 - [x] **Day 37** — M39 TS with Node: `tsx` direct execution, `@types/express`+`@types/node`, typed Express Request/Response + typed body ✅
 - [x] **Day 38** — M40 Rebuild SaaS in TS (part 1): typed models ✅
 - [x] **Day 39** — M40 (part 2): typed CRUD APIs ✅
-- [ ] **Day 40** — M40 (part 3): typed validation + review
+- [x] **Day 40** — M40 (part 3): typed validation + review ✅
 
-### Phase 4.5 — Design Patterns (2 days)
-- [ ] **Day 40a** — M40.5 Patterns part 1: Factory, Singleton/Module, Strategy, Repository, DI — name them in your Phase 3 projects
-- [ ] **Day 40b** — M40.5 Patterns part 2: Chain of Responsibility, Observer, Adapter/Ports, Facade, Decorator — identify each in the cited procIq files
+> **Phase 4.5 (Design Patterns) moved** — now runs at the very end of `frontend-roadmap.md`,
+> after its Phase 11, so it covers backend + frontend pattern examples together. Not tracked
+> in this file anymore; see `frontend-roadmap.md`'s day/phase notes instead.
 
 ---
 

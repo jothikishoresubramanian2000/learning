@@ -50,9 +50,10 @@ These are in memory (`js-learning-workflow`) but repeated here — follow **exac
   - ✅ **Module 38 (Utility Types) DONE** — Partial/Pick/Omit/Record/Readonly + DTO composition, all verified with output.
   - ✅ **Module 32b (Assertions) DONE** — taught + practiced step-by-step (`!`, `as const`, `as`+validate untrusted data incl. WHY `Partial<T>` not full `T` when asserting unverified JSON; `satisfies`). Notes written.
   - ✅ **Module 39 (TS with Node) DONE** — `tsx` direct execution (replaced tsc+node two-step), `@types/express`/`@types/node`, typed Express `Request`/`Response`/body, in `39_ts_with_node/` (its own package.json + express installed there).
-  - **CURRENT / NEXT: Module 40 — Rebuild the SaaS Backend in TS** (3 days: typed models, typed CRUD APIs, typed validation). This re-does Phase-3's Project 8 (multi-tenant backend) fully typed — the last module of Phase 4.
-- ⬜ **Phase 4.5 — Design Patterns (Modules 40.5):** added on his request, after TS. Factory/Singleton/Strategy/Repository/DI/Chain-of-Responsibility/Observer/Adapter/Facade/Decorator — each mapped to a real procIq file.
+  - ✅ **Module 40 (Rebuild the SaaS Backend in TS) DONE** — all 3 parts in `40_saas_backend_ts/`: typed models (FK-style `Tenant`/`Org`/`User`, `as const`+indexed-access `Role`), a generic `abstract class Store<T extends {id:string}>` CRUD engine with `TenantStore`/`OrgStore`/`UserStore` extending it (constructor-injected DI, `override create()` + `super.create()` for parent-existence checks), and typed `unknown`-input validation (`parseTenantInput`/`parseOrgInput`/`parseUserInput` → `ValidationError`). This was the last module of Phase 4 — **Phase 4 TypeScript is now fully complete.**
+  - **CURRENT / NEXT: Phase 5 — Production (Modules 41–50)**, straight after Phase 4 — Design Patterns no longer sits here (see below).
 - ⬜ **Phase 5 — Production (Modules 41–50):** Node/Express, PostgreSQL+RLS, Prisma, NestJS, Auth/Cognito, messaging/Redis/SQS, AWS/CDK, Testing/Jest, DevOps/Docker/Nx, Capstone.
+- ⬜ **Design Patterns — MOVED (2026-08-27, on his request):** no longer Phase 4.5 here. Now the **final phase (Module 59) of `frontend-roadmap.md`**, done after the whole frontend track, so Factory/Singleton/Strategy/Repository/DI/Chain-of-Responsibility/Observer/Adapter/Facade/Decorator each get a **Spine (backend) AND a Compass (frontend) example side by side**, instead of backend-only months before React. Don't teach this after Phase 4 anymore — wait until the frontend roadmap is otherwise done.
 
 **Pace:** ~1 module per 2-hour "day" (flexes by size; big ones span days). He often goes faster. Timeline ~4 months to procIq-ready. He tracks days in `learning_schedule.md` (ticked `[x]`).
 
@@ -86,17 +87,17 @@ These are in memory (`js-learning-workflow`) but repeated here — follow **exac
 
 ## 7. HOW TO PICK UP RIGHT NOW (next action)
 
-1. **Module 39 — TypeScript with Node** next (set up `tsx`/`ts-node` to run `.ts` directly, `@types/*`, typing an Express-style request/response). Then Module 40 (rebuild the SaaS backend, typed, 3 days).
+1. **Phase 5 — Production (Modules 41-50)** next — Phase 4 (TypeScript, Modules 31-40) is fully done. Design Patterns is no longer next here — it moved to the very end of `frontend-roadmap.md` (Module 59), done together with frontend pattern examples after the whole frontend track. Don't schedule it after Phase 4 anymore.
 2. Keep the rhythm: teach atomically w/ syntax examples → create empty files → 3 no-hint tasks (Input/Output) → he writes → "done check" → I read+run+feedback → append notes → tick schedule.
 3. **caveman mode** is active in his terminal (a plugin) — responses come out terse/fragment-style; code stays normal. Not something you control; just be aware his hook compresses tone.
 4. Note: if a module gets rushed/skipped-feeling, he may ask to redo it **step-by-step, one atom at a time** (concept→tiny example→his one-piece task→check→next atom) instead of all-3-tasks-at-once. Honor that pacing when asked.
 
 ## 8. THE FILES (all in `d:\learning\javascript\`)
 
-- `javascript-roadmap.md` — full curriculum, Phases 1–5 + 4.5, every module's atoms.
-- `learning_schedule.md` — day-by-day plan, `[x]` ticked through Day 35.
-- `js_learning_notes.md` — per-module notes (Modules 1–37 written; **keep appending 38+**).
-- `frontend-roadmap.md` — future FE track (start after backend).
+- `javascript-roadmap.md` — full curriculum, Phases 1–5, every module's atoms. (Design Patterns/Phase 4.5 moved out — see `frontend-roadmap.md`.)
+- `learning_schedule.md` — day-by-day plan, `[x]` ticked through Day 40.
+- `js_learning_notes.md` — per-module notes (Modules 1–40 written; **keep appending 41+**).
+- `frontend-roadmap.md` — future FE track (start after backend); its final phase (Module 59) is Design Patterns, covering both backend and frontend examples together.
 - `01_Introduction/` … `28_NPM/`, `phase3_projects/`, `phase4_typescript/` — his task files by module.
 - `D:\learning\procIq-app` — the cloned target project to study/reference.
 

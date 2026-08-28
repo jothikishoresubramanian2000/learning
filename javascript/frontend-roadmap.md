@@ -405,6 +405,74 @@
 
 ---
 
+## Phase 12 — Design Patterns (Backend + Frontend Together)
+> **Moved here 2026-08-27**, on request — originally slotted right after Phase 4 TypeScript
+> in `javascript-roadmap.md` as its own Phase 4.5. Doing it here instead, as the very last
+> phase of everything, means every pattern gets a **backend (Spine) example and a frontend
+> (Compass) example side by side**, in one pass, instead of learning it backend-only months
+> before ever touching React. ~2-3 days.
+
+### Module 59 — Design Patterns (the ones procIq actually uses, both sides of the stack)
+Each pattern: **problem it solves → when to use → when NOT to → a Spine example AND a Compass example.**
+
+- **Factory** — a function/method that builds and returns objects (you built closure factories
+  in M13: `makeCounter`, `makeAccount`). Hides construction detail.
+  - *Spine:* nothing dedicated — closures/constructors cover it.
+  - *Compass:* `useApiMutation` (`src/api/shared/useApiMutation.ts`) is a "hook factory" — it
+    builds a ready-to-use mutation hook (call API → invalidate query key → surface error) for
+    every domain, so each domain doesn't hand-write that wiring itself.
+- **Singleton / Module** — one shared instance across the app.
+  - *Spine:* NestJS providers are singletons by default (constructor-injected once, reused).
+  - *Compass:* Zustand stores (`src/store/catalogSelection.store.ts`, the toast store in
+    `src/lib/toast.ts`) — module-scope state, one instance shared by every component that
+    imports it, nothing to instantiate.
+- **Strategy** — swappable behavior chosen at runtime instead of hardcoded.
+  - *Spine:* `apps/spine/src/platform/auth/strategies/jwt.strategy.ts` (Passport strategy).
+  - *Compass:* the JSON-driven route/nav registry (`src/config/navigation.json` +
+    `src/routes.tsx`) — routes/guards/nav items are declared as string keys, resolved against
+    `PAGES`/`GUARDS` registries at runtime, instead of a hardcoded `<Route>` tree.
+- **Repository** — isolate data access behind a class so the rest of the code never touches the
+  raw data source directly.
+  - *Spine:* every `*.repository.ts` (isolates Prisma calls from services).
+  - *Compass:* the 3-tier API-client pattern — raw `axios` → `AxiosWrapper` → a per-domain
+    `*.api.ts` class (e.g. `AuthAPI`, `PicoAPI`) — components never call `axios` directly.
+- **Dependency Injection** — pass a class its dependencies instead of hardcoding `new`.
+  - *Spine:* NestJS constructor injection everywhere (`constructor(private readonly x: X)`).
+  - *Compass:* `AuthContext` (`src/context/AuthContext.tsx`) — components read `user`/`login`/
+    `logout` via `useAuth()` instead of each one constructing its own auth logic; React's actual
+    DI mechanism is Context, not a container/decorator like Nest's.
+- **Chain of Responsibility** — a pipeline of handlers, each does its bit then passes on.
+  - *Spine:* `apps/spine/src/chain/handlers/` (Auth→Tenant→RateLimit→Session→Forward).
+  - *Compass:* less common on the frontend — the nearest analog is stacked route-guard
+    components (`ProtectedRoute` wrapping `PlatformAdminRoute` wrapping a page), each checking
+    one thing before rendering the next layer.
+- **Observer / Pub-Sub** — emit an event; independent listeners react, without the emitter
+  knowing who's listening.
+  - *Spine:* `@nestjs/event-emitter` (`PR_SUBMITTED` → whichever listeners exist).
+  - *Compass:* `usePicoChat` (`src/lib/pico-chat.ts`) — `socket.io-client` event listeners
+    (`pico:token`/`pico:thinking`/`pico:done`) reacting independently to server-emitted events.
+- **Adapter / Ports** — a common interface in front of a swappable underlying driver.
+  - *Spine:* a mail-provider interface (log provider vs. SendGrid, same shape).
+  - *Compass:* `AxiosWrapper` (`src/api/shared/axios.wrapper.ts`) — wraps raw `axios` behind a
+    normalized interface (bearer token, `App-Id` header, abort signals, centralized error
+    translation), so the rest of the app never talks to `axios` directly.
+- **Facade** — a simple front hiding a more complex subsystem behind it.
+  - *Spine:* the service layer hides repository + external-call complexity from controllers.
+  - *Compass:* `useApiMutation` again, from the caller's side this time — one hook call hides
+    "call → invalidate → error-handle" entirely.
+- **Decorator** — wrap/annotate behavior without changing the thing being wrapped.
+  - *Spine:* TS decorators (`@Injectable`, `@Get`) — M37/M44.
+  - *Compass:* `DataTable`'s pluggable render-prop slots (`renderToolbar`, `renderEmpty`,
+    `renderLoading`) and its cell-renderer library (`CurrencyCell`, `BadgeCell`, `DateCell`) —
+    each wraps/annotates a base cell or table region without touching the table's core logic.
+
+**Task:** pick one Phase-3 backend project and one thing you built in the React phases above;
+consciously name their patterns (a manager/service = Repository, a `run()` wrapper = a mini
+Facade/error-boundary, closures = Factory, a Context provider = DI) — then open every cited
+Spine *and* Compass file above and confirm you can point at the pattern in the real code.
+
+---
+
 ## Suggested order
 
 ```
@@ -415,10 +483,11 @@ HTML (1-7) → CSS (8-17) → DOM/JS (18-21)          the platform
   → Angular (46-51)                                 second framework
   → master: Next.js, real-time, Nx (52-55)
   → purveo-app gap-closing (56-58)                  read/write the real repo
+  → design patterns, BE+FE together (59)            moved from the backend roadmap
 ```
 
 **Timeline (2 hrs/day):** ~90–110 days to strong intermediate across React + Angular.
-React alone (employable): ~50–60 days (Modules 1-45). Add ~3 days for Modules 56-58.
+React alone (employable): ~50–60 days (Modules 1-45). Add ~3 days for Modules 56-58, ~2-3 more for Module 59.
 
 ## Connects to your backend work
 - You built the **API** these frontends call (BE Phase 3).
