@@ -464,16 +464,26 @@
 - Environment config & secrets (`.env`, `@nestjs/config`)
 - Project/folder architecture (layered: controller → service → repository)
 
-### Module 42 — Databases & SQL (PostgreSQL)
+### Module 42 — Databases & SQL Fundamentals (entry level)
+> **Scope note (added 2026-08-27, on request):** deliberately kept entry-level — the
+> fundamentals anyone learning databases/SQL from scratch covers, nothing more.
+> Production-grade Postgres (transactions, roles, RLS) is its own module right after
+> this one (M42.5), not blended in here.
 - Relational model: tables, rows, columns, keys
 - Primary keys, foreign keys, relationships (1-1, 1-many, many-many)
-- Core SQL: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `WHERE`, `JOIN`, `GROUP BY`, `ORDER BY`
-- Indexes (why queries get slow), unique constraints
-- Transactions & ACID, isolation
+- Core SQL: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `WHERE`, `ORDER BY`
+- `JOIN`s, `GROUP BY`, aggregates
+- Indexes — what they are and why queries get slow without them (awareness only, not tuning)
+- Unique constraints
+
+### Module 42.5 — PostgreSQL Production Features (procIq-level)
+> Genuinely intermediate/advanced — do it right after M42. M43 (Prisma) depends on
+> understanding RLS, so this can't move later, but it's its own step, not "database basics."
+- Transactions & ACID, isolation levels
+- Raw SQL basics, connection pooling
 - Postgres roles & privileges (`CREATE ROLE`, `GRANT`)
 - **Row-Level Security (RLS)**: `ENABLE/FORCE ROW LEVEL SECURITY`, `CREATE POLICY ... USING/WITH CHECK`, `current_setting('app.tenant_id')`, fail-closed (0 rows) — procIq's core tenant isolation
 - Session config / GUC: `SET`/`set_config()` inside a transaction
-- Raw SQL basics, connection pooling
 > Study: `migrations/` and the `*_rls_*` SQL files
 
 ### Module 43 — Prisma ORM

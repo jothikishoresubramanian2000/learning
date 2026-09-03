@@ -1,7 +1,12 @@
 // pick a property — the value comes back with its real type
-function firstOf(items){
-  return items[0];
-}
-const u = firstOf([{ id: 1 }, { id: 2 }]);   // u is { id: number } | undefined
+// function firstOf(items){
+//   return items[0];
+// }
+// const u = firstOf([{ id: 1 }, { id: 2 }]);   // u is { id: number } | undefined
 
-console.log(u)
+// console.log(u)
+
+const myObj = {name:"kishore"}
+
+myObj["id"] = "ID-001"
+console.log(myObj);
