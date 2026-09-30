@@ -104,21 +104,21 @@ Modules 1—12 completed: Introduction, Variables, Data Types, Operators, Type C
 ### M41 — Node Backend Foundations (3 days)
 - [x] **Day 41** — HTTP deep: methods, status codes, headers, REST design ✅
 - [x] **Day 42** — Express: routing, middleware, request lifecycle ✅
-- [ ] **Day 43** — Config/env/secrets, layered architecture (controllerâ†’serviceâ†’repository)
+- [x] **Day 43** — Config/env/secrets, layered architecture (controller→service→repository) ✅
 
 ### M42 — Databases & SQL Fundamentals, entry level (3 days)
-- [ ] **Day 44** — Relational model, tables, keys, relationships (1-1/1-many/many-many)
-- [ ] **Day 45** — Core SQL: SELECT/INSERT/UPDATE/DELETE/WHERE/ORDER BY, unique constraints
-- [ ] **Day 46** — JOINs, GROUP BY, aggregates, indexes (what/why, awareness only)
+- [x] **Day 44** — Relational model, tables, keys, relationships (1-1/1-many/many-many) ✅
+- [x] **Day 45** — Core SQL: SELECT/INSERT/UPDATE/DELETE/WHERE/ORDER BY, unique constraints ✅
+- [x] **Day 46** — JOINs, GROUP BY, aggregates, indexes (what/why, awareness only) ✅
 
 ### M42.5 — PostgreSQL Production Features, procIq-level (2 days)
-- [ ] **Day 47** — Transactions & ACID, isolation levels, connection pooling
-- [ ] **Day 48** — Postgres roles/privileges + **RLS** (policies, `current_setting`, fail-closed) — procIq core
+- [x] **Day 47** — Transactions & ACID, isolation levels, connection pooling ✅
+- [x] **Day 48** — Postgres roles/privileges + **RLS** (policies, `current_setting`, fail-closed) — procIq core ✅
 
 ### M43 — Prisma ORM (3 days)
-- [ ] **Day 49** — Schema: models, relations, enums, `@map/@@unique/@@index`, migrations
-- [ ] **Day 50** — Client queries, `select`, error codes, `$transaction`, raw SQL
-- [ ] **Day 51** — `$extends` query hooks + **two-client RLS pattern** (tenant vs admin) — study `connection.service.ts`
+- [x] **Day 49** — Schema: models, relations, enums, `@map/@@unique/@@index`, migrations ✅
+- [x] **Day 50** — Client queries, `select`, error codes, `$transaction`, raw SQL ✅
+- [x] **Day 51** — `$extends` query hooks + **two-client RLS pattern** (tenant vs admin) — study `connection.service.ts` ✅
 
 ### M44 — NestJS Framework (7 days — largest)
 - [ ] **Day 52** — Why Nest, bootstrap, modules (global/dynamic `forRoot`)

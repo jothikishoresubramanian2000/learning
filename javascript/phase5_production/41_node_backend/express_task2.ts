@@ -1,21 +1,21 @@
 import express from "express"
 import { RequestHandler,Request,Response } from "express"
 
-const app = express()
+export const app = express()
 app.use(express.json())
 
-interface Items{
+export interface Items{
     id: string,
     name: string
 }
-const myItem:Items[] = []
-let itemCount = 0
+export const myItem:Items[] = []
+export let itemCount = 0
 
-interface Config{
+export interface Config{
     value: string
 }
 
-let myConfig: Config ={value:""}
+export let myConfig: Config ={value:""}
 
 app.post("/items",(req:Request,res:Response)=>{
 

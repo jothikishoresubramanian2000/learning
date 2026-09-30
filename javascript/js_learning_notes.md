@@ -265,6 +265,8 @@ str.repeat(3)
 ```
 Escapes: `\n` newline, `\t` tab, `\"` quote.
 
+⭐ **Found-gap atom (added later, from `casual_tasks/task11.js` — a Caesar cipher):** `str.charCodeAt(i)` — the numeric Unicode code point of a character (`'a'.charCodeAt(0)` → `97`); `String.fromCharCode(code)` — the reverse, number → character. Not originally in this module's list; correctly used by instinct, mapped over from Python's `ord()`/`chr()`. `((code - 97 + shift) % 26) + 97` shifts a lowercase letter relative to `'a'` (offset 0), wraps with `%`, re-offsets back — same shape as Python's `chr((ord(c) - 97 + shift) % 26 + 97)`.
+
 **Backend:** build IDs (`EMP-KISHORE-001`), parse CSV, extract email domain via `split("@")[1]` (derive, don't hardcode lengths).
 
 ---
@@ -1526,3 +1528,170 @@ function parseTenantInput(raw: unknown): Tenant {
 **Backend:** this whole module IS procIq's real shape. `Store<T>` mirrors procIq's `*.repository.ts` files (Repository pattern — named explicitly in Module 40.5 next). `parseXInput` mirrors a NestJS DTO + global `ValidationPipe` boundary (Module 44). `ValidationError`/`NotFoundError`/`DuplicateIdError` map directly to the 400/404/409 status mapping you built by hand back in Phase 3.
 
 *Next: Phase 5 — Production Backend Engineering (Module 41). Design Patterns moved to the end of `frontend-roadmap.md` (Module 59), done together with frontend examples.*
+
+## Module 41 — Node.js Backend Foundations (3 days: HTTP deep-dive → Express → env/layered architecture)
+
+**Day 1 — HTTP methods, status codes, headers, REST:**
+- `PUT` (full resource replace, every field) vs `PATCH` (only changed fields) — new distinction. **Idempotency**: repeating the exact same request leaves the same end state or not. `GET`/`PUT`/`DELETE` are idempotent; `POST` is not — proved directly in `http_task2.ts` (`POST` grows an array on every repeat call; `PUT` leaves the same single value unchanged no matter how many times).
+- ⭐ **401 vs 403** — `401` = "I don't know who you are" (missing/invalid credentials). `403` = "I know who you are, but no" (valid credentials, insufficient permission). Full category map: 1xx info · 2xx success · 3xx redirect (304 caching, later) · 4xx client's fault · 5xx server's fault (procIq's own Spine returns `503` when Cognito isn't configured — fail fast and loud).
+- **Headers** — request (`Content-Type`, `Authorization`, `Accept`) vs response (`Content-Type`, `Set-Cookie`, `Cache-Control`). **Content negotiation**: read the client's `Accept` header, respond in a matching format — don't always assume JSON.
+- ⚠️ **Gotcha hit for real:** `req.headers["accept"].includes(...)` crashes if `Accept` is absent entirely (`undefined.includes` throws) — exactly the "handled the special case, forgot the normal one" pattern from Phase 3. Fix: `req.headers["accept"] ?? ""` (or `?.includes(...)`) before checking. Also: two independent `if`s (not `if`/`else`) checking overlapping conditions can double-respond on the same request → `ERR_HTTP_HEADERS_SENT`, same as a Phase-3 lesson.
+- **`fetch`** — the client side of a request (you'd only ever written the server/receiving side before). `await fetch(url, opts)` resolves once headers arrive; the body is a SEPARATE `await` step (`res.json()`/`res.text()`) since it may still be streaming. A `Response` body is a one-shot stream — calling `.json()` twice on the same response object throws `"Body is unusable"`. `fetch` does NOT throw on 4xx/5xx — only on real network failure; check `res.status` yourself. `res.headers.get("content-type")` (a `Headers` object with a `.get()` method) — NOT bracket access like server-side `req.headers["..."]`, which is a plain object; bracket access on `res.headers` silently gives `undefined`.
+
+**Day 2 — Express: routing, middleware, request lifecycle:**
+```ts
+app.get("/tenants/:id", (req, res) => { req.params.id });   // route param, extracted for you
+app.use(express.json());                                     // built-in body-parsing middleware — replaces req.on("data"/"end") entirely
+```
+- ⭐ **Middleware** = a function `(req, res, next) => {...}` that runs BEFORE a route handler — same idea as an airport security checkpoint every passenger passes through regardless of destination. `app.use(fn)` attaches it globally (every route); passing it as an extra argument to `app.get(path, fn, handler)` scopes it to one route only. **Not** two different concepts — same function shape, different attachment point controls scope.
+- ⚠️ **Forgetting to call `next()` hangs the request forever** — no crash, no error, nothing. Express is waiting for permission to continue and nothing tells it to.
+- Request lifecycle: `request → middleware(s) in registration order → matching route handler → response`. Order is real execution order, not cosmetic — `express.json()` must be registered before any route reading `req.body`.
+- Typing: `RequestHandler` (from `"express"`) is a `type` alias for a function signature — same pattern as M34's `type numMath = (price: number) => number`, just `(req: Request, res: Response, next: NextFunction) => void` (simplified; the real one is generic over params/body/query).
+
+**Day 3 — Env config/secrets + layered architecture:**
+```ts
+import "dotenv/config";                          // loads .env into process.env — first import in the entry file
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required env var: ${name}`);   // fail LOUD at boot, not silently at request time
+  return value;
+}
+```
+- Same principle as M40 Part 3's untrusted-input validation, applied to config: check once at startup, refuse to boot if something required is missing — this is exactly what procIq's real `apps/spine/src/config/env.validation.ts` does.
+- ⭐ **Controller → Service → Repository** — naming a split you'd already half-built. Repository = data access only, no HTTP, no business rules (Module 40's `Store<T>` IS this layer). Service = business logic/validation, never touches `req`/`res` — if you swapped Express for a CLI tomorrow, the service and repository wouldn't change, only the controller would. Controller = the ONLY layer touching `req`/`res`, translates HTTP in and out, delegates everything else.
+- ⚠️ **Real bug hit:** `this.message = "ValidationError"` inside a custom error's constructor (meant `this.name`) silently overwrites the actual thrown message, breaking any `error.message === "..."` branching downstream — a caught error that should map to `403` fell through to a generic `500` because the specific message was gone by the time it was checked.
+- ⚠️ **Real gotcha hit:** `res.json({ error })` on a raw `Error` object only sends `name`, never `message` — `Error.prototype.message`/`.stack` are non-enumerable by spec, so `JSON.stringify` silently skips them. Send `error.message` explicitly if the client needs to see it.
+- ⚠️ **Cross-module-folder imports break `rootDir`:** each Phase 4/5 module folder is its own isolated TS project (own `tsconfig.json`/`outDir`) — importing a file from a *different* module folder (e.g. Module 40's `Store<T>` into a Module 41 file) fails with a `rootDir` error, since that file falls outside this project's inferred root. The real fix (TS path aliases across a shared workspace root) is deliberately Module 56, much later — for now, each folder stays self-contained; small reusable pieces get rewritten locally rather than cross-imported.
+
+**Backend:** this module is the direct on-ramp to NestJS (Module 44) — Express's routing/middleware/lifecycle model is literally the layer Nest sits on top of and wraps in decorators; the controller/service/repository split you named today is the exact shape of every real NestJS module (`*.controller.ts`/`*.service.ts`/`*.repository.ts`) and of procIq's own `apps/spine/src/tenant/control-hub/*` modules.
+
+*Next: Module 42 — Databases & SQL Fundamentals (entry level).*
+
+## Module 42 — Databases & SQL Fundamentals, entry level (3 days: relational model → core SQL → JOIN/GROUP BY/indexes)
+
+**Day 1 — table/row/column, keys, relationships:**
+- A **table** = a spreadsheet sheet with fixed columns; a **row** = one record; every row shares the exact same columns (unlike a JS object array, where shapes could technically differ). This is the real, permanent version of what `Store<T>`'s in-memory `Map` was standing in for all through Module 40.
+- **Primary key** — the column guaranteeing uniqueness per row; `Tenant.id`/`Org.id`/`User.id` from Module 40 were already primary keys, just unnamed. **Foreign key** — a column holding another table's primary key value, linking rows (`Org.tenantId` → `Tenant.id`) — the exact pattern already deliberately built in Module 40 instead of nesting.
+- Relationship types: **one-to-many** (plain FK on the "many" side — `Tenant`→`Org`, `Org`→`User`), **one-to-one** (FK constrained unique), **many-to-many** (needs a junction table with two FKs — neither side alone can hold a single FK).
+- Self-check confirmed correct on first try: `Tenant.id`=PK; `Org.id`=PK (own), `Org.tenantId`=FK→`Tenant.id` (1-many); `User.id`=PK (own), `User.orgId`=FK→`Org.id` (1-many).
+
+**Day 2 — Core SQL, CRUD:**
+```sql
+SELECT * FROM orgs WHERE tenantid = 'T-01';              -- this IS Store.getById / listByTenant
+INSERT INTO orgs (id, tenantid, name) VALUES ('O-01','T-01','Eng');   -- this IS Store.create
+UPDATE orgs SET name = 'Platform Eng' WHERE id = 'O-01';  -- this IS Store.update
+DELETE FROM orgs WHERE id = 'O-02';                        -- this IS Store.delete
+```
+- ⚠️ **`WHERE` doesn't belong in `INSERT`** — real mistake made and caught: `INSERT INTO orgs WHERE (...)`. `WHERE` filters *existing* rows for `SELECT`/`UPDATE`/`DELETE`; `INSERT` creates brand-new rows, nothing to filter. Multi-row `VALUES (...), (...), (...)` in one `INSERT` IS valid, correct syntax (found by instinct, not taught first).
+- ⚠️ **Quoting, Postgres-specific:** single quotes `'...'` for string VALUES; double quotes `"..."` are reserved for identifiers (table/column names) — `"O-01"` in real Postgres reads as a quoted *identifier*, not the string `"O-01"`, a real error, not a style nit.
+- ⚠️ **`SELECT` needs something between it and `FROM`** — `SELECT FROM orgs` is invalid; needs `SELECT *` or an explicit column list.
+- ⚠️ **`AND` vs `OR`/`IN` on the SAME column — real logic bug caught:** `WHERE tenantid = 'T-01' AND tenantid = 'T-02'` can never match any row (one column can't hold two different values on one row at once) — always returns zero rows. Wanting "either" needs `OR` or `IN ('T-01','T-02')`. `AND` narrows (every condition must hold); `OR`/`IN` widens (any one is enough) — opposite jobs.
+- Real, non-optional-in-spirit warning: `UPDATE`/`DELETE` with no `WHERE` touches **every row in the table**, not one.
+
+**Day 3 — JOIN, GROUP BY, aggregates, indexes:**
+```sql
+SELECT tenants.name, COUNT(*)
+FROM orgs
+JOIN tenants ON orgs.tenantid = tenants.id
+GROUP BY tenants.id, tenants.name;
+```
+- `JOIN` walks exactly the FK relationship from Day 1 — pulls in the related table's columns in one query instead of a raw FK string + a second manual lookup.
+- `GROUP BY` splits rows into buckets (one per distinct value); an aggregate (`COUNT`/`SUM`/`AVG`/`MAX`/`MIN`) then runs *within each bucket* separately — the SQL equivalent of `listByTenant(...).length` computed by the DB itself instead of pulled back and counted in JS.
+- ⭐ **Postgres-specific allowance, confirmed accurate:** grouping by a table's primary key lets you select any other column from that same table even though only the PK is in `GROUP BY` (PK uniquely determines the rest of the row) — not universally true across all SQL engines, but genuinely correct for the Postgres target here. Portable habit: list every non-aggregated selected column in `GROUP BY` anyway (`GROUP BY tenants.id, tenants.name`), not just the PK — safer if this ever needs to run elsewhere, and prefer grouping by a real unique key over a display field like `name` (names aren't inherently guaranteed unique).
+- ⚠️ **Clause order is fixed and non-negotiable:** `SELECT → FROM → JOIN → WHERE → GROUP BY → HAVING → ORDER BY`. Writing `GROUP BY` before `JOIN` (a real mistake made) doesn't parse.
+- **Indexes** (awareness only, not tuning) — a pre-sorted lookup structure so the DB can jump to matching rows instead of scanning every row. A primary key is auto-indexed for free (why `WHERE id = '...'` stays fast at any table size); a foreign key column (`orgs.tenantid`) is **not** auto-indexed in Postgres — added deliberately if queried on constantly. Deeper tuning (when/how) is later, more advanced material.
+
+**No task files this module** — deliberately vocabulary/query-writing only, checked conversationally rather than run, since no real database is wired up yet. That starts for real in Module 43 (Prisma) — offered to spin up a personal practice Postgres now (separate from `purveo-app`, which stays read-only) for an actual run-it-yourself feedback loop; held off per his choice to keep this stretch conceptual and wait for Module 43's real setup.
+
+**Backend:** every query here maps directly onto procIq's actual `libs/db/prisma/schema.prisma` models and the raw SQL underneath every Prisma call in Module 43 — and the FK/relationship vocabulary is exactly what a `schema.prisma` `@relation` describes declaratively instead of hand-written.
+
+*Next: Module 42.5 — PostgreSQL Production Features (transactions/ACID, roles/privileges, RLS, connection pooling).*
+
+## Module 42.5 — PostgreSQL Production Features, procIq-level (2 days: transactions/ACID/isolation/pooling → roles/RLS)
+
+**Day 1 — Transactions, ACID, isolation levels, connection pooling:**
+```sql
+BEGIN;
+UPDATE accounts SET balance = balance - 100 WHERE id = 'A';
+UPDATE accounts SET balance = balance + 100 WHERE id = 'B';
+COMMIT;   -- or ROLLBACK to undo everything since BEGIN
+```
+- **Transaction** = all-or-nothing group of statements. **ACID**: Atomicity (all-or-nothing), Consistency (never leaves a constraint violated), Isolation (concurrent transactions don't see each other's half-finished work), Durability (once `COMMIT`, survives even an immediate crash).
+- ⭐ **Real-world check that landed correctly (his own UPI-transfer example):** without a transaction, **each individual statement auto-commits on its own the instant it runs** — so a crash between two related `UPDATE`s doesn't leave something "not yet rolled back," it leaves something **already permanently committed**, with no transaction boundary to undo. Rollback only works on *not-yet-committed* changes — once committed, fixing a half-done transfer needs a brand-new compensating transaction, not a rollback. Wrapping both statements in one transaction means a crash before `COMMIT` auto-discards the *whole thing* on recovery — that automatic discard on failure **is** the rollback, not something triggered by hand afterward.
+- **Isolation anomalies** (real-life examples that landed): **dirty read** = reading another transaction's uncommitted work before it's confirmed (seeing money "arrived" that later `ROLLBACK`s away). **Non-repeatable read** = same row, re-read twice in one transaction, gives a *different value* the second time because something else committed in between. **Phantom read** = same query, re-run twice, gives a *different row count* because a new row appeared/disappeared in between (distinguish clearly: non-repeatable = value on an existing row changed; phantom = the *count* of matching rows changed).
+- Four isolation levels: `READ UNCOMMITTED` (prevents nothing, Postgres barely offers it) → `READ COMMITTED` (prevents dirty reads — **Postgres's default**) → `REPEATABLE READ` (+ non-repeatable reads) → `SERIALIZABLE` (+ phantom reads, behaves as if transactions ran one at a time).
+- **Connection pooling** — opening a fresh DB connection per request is expensive (TCP handshake, auth, a whole Postgres backend process); a pool keeps connections open and idle, hands one out per query, returns it after — reused instead of repeated. This is what Prisma manages under the hood (Module 43), and at scale what a dedicated pooler (PgBouncer) does in front of Postgres itself.
+
+**Day 2 — Roles/privileges + Row-Level Security (RLS) — procIq's actual core mechanism:**
+```sql
+ALTER TABLE orgs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orgs FORCE ROW LEVEL SECURITY;      -- even the table OWNER gets restricted — owners normally bypass RLS
+
+CREATE POLICY tenant_isolation ON orgs           -- name is arbitrary, purely a human label, no special meaning to Postgres
+  USING (tenantid = current_setting('app.tenant_id')::text);
+```
+- **Roles/privileges** (`CREATE ROLE`, `GRANT`) = table-level access ("can this role touch `orgs` at all"). RLS = a finer layer *within* a table you already have access to — an invisible extra `WHERE` appended to every query automatically.
+- `CREATE POLICY`/`ENABLE ROW LEVEL SECURITY` are **one-time, permanent schema setup** (migration-time, like a `UNIQUE` constraint) — never re-run per request. What genuinely IS per-request: `set_config('app.tenant_id', 'T-01', true)` — sets a transaction-scoped session variable fresh on every request, which every RLS policy then reads via `current_setting(...)`.
+- ⭐ **Fail-closed, confirmed with a real, high-stakes example (his own):** if `app.tenant_id` is never set, `current_setting` returns empty, the policy's condition matches **zero rows** — the query returns nothing, not everyone's data. The alternative (fail-*open*) would mean a missed `set_config` call silently leaks every other tenant's confidential data across company boundaries — for a real multi-tenant SaaS, a full data-breach event (legal liability, lost trust, regulatory exposure), not just "a bug." Fail-closed turns that same missed call into a loud, immediately-visible "sees nothing" instead.
+- **Three-role pattern (procIq's real setup)**: `prociq_app` (ordinary runtime connection, RLS fully applies) / `prociq_admin` (separate role, `BYPASSRLS`, legitimate cross-tenant ops only) / `prociq` (owner, migrations/DDL only). Deliberately separate *credentials*, not a togglable flag on one connection — so ordinary app-code bugs can't reach the bypass at all, since they never hold the admin role's credentials.
+
+**No task files this module either** — same reasoning as M42, held off on a personal practice Postgres by his own choice, waiting for Module 43's real setup.
+
+**Backend:** this module IS procIq's actual multi-tenancy mechanism, not an analogy for it — `CREATE POLICY`/`current_setting('app.tenant_id')`/fail-closed is verbatim what `libs/db/prisma/migrations/*rls*` and `connection.service.ts`'s two-client (`prociq_app`/`prociq_admin`) pattern do for real, and what Module 43 wires Prisma into next.
+
+*Next: Module 43 — Prisma ORM.*
+
+## Module 43 — Prisma ORM (3 days: schema/migrations → client queries → real RLS) — first module with an ACTUAL database
+
+Set up a personal practice Postgres (Docker container `learning-postgres`, port 5434 — completely separate from `purveo-app`'s own containers on 5432/5433, never touched) with Prisma 5 (pinned deliberately — `npm install prisma` defaults to the newest major, v7, which restructures config into a separate `prisma.config.ts` instead of the classic all-in-`schema.prisma` setup the roadmap/procIq assume).
+
+**Day 1 — Schema: models, relations, enums, migrations:**
+```prisma
+enum Role { ADMIN MEMBER VIEWER }
+
+model Org {
+  id       String @id @default(uuid())
+  name     String
+  tenantId String @map("tenant_id")
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+```
+- `@id`/`@default(uuid())` = PK (recap Day 44). `@relation(fields:[...], references:[...])` = the real FK (recap Day 44/`JOIN`) — Prisma turns it into a real SQL `FOREIGN KEY`. A reverse array field (`orgs Org[]`) isn't a real column — pure TS-side convenience for navigating `tenant.orgs`.
+- `enum` directly replaces the `as const`-array + derived-type pattern from Module 40 — one declaration gives both a real Postgres enum constraint AND a generated TS union type.
+- `@map`/`@@map` rename the underlying column/table without changing the TS-facing name. `@@unique([...])`/`@@index([...])` — composite constraints/indexes, recap Days 45-46 (index syntax needs brackets even for one field: `@@index([tenantId])`, not bare `@@index(tenantId)` — the bracket-less form happened to still migrate correctly in practice, but isn't the documented convention).
+- ⚠️ **Naming a relation field matters, not just types:** named a single-`Org` relation on `User` as `orgs` (plural) — Prisma doesn't care, but a future reader would reasonably expect an array and could call `.map()` on it, crashing at runtime. Renamed to `org` (singular), matching `Org.tenant`. Free fix — relation field names aren't real columns, renaming needs no new migration, just `prisma generate`.
+- `npx prisma migrate dev --name X` — diffs schema against the real DB, generates and applies a real SQL migration (`CREATE TABLE`/`ALTER TABLE`, openable and readable — direct proof of Module 42).
+
+**Day 2 — Prisma Client queries:**
+```ts
+await prisma.org.create({ data: {...} });                              // recap Store.create
+await prisma.org.findUnique({ where: {id}, select: {id:true,name:true} }); // recap Store.getById + SELECT col list
+await prisma.org.findMany({ include: { tenant: true } });               // recap JOIN, done for you
+```
+- Typed error codes replace `DuplicateIdError`/`NotFoundError` by hand: `Prisma.PrismaClientKnownRequestError` with `.code` — `P2002` (unique violation, tied to your own `@@unique`), `P2025` (record not found).
+- `$transaction(async (tx) => {...})` — real atomicity (recap Day 47): a forced failure partway through rolled back the ENTIRE unit, including a tenant creation that had already "succeeded" earlier in the same callback — proved stronger than expected (the failed tenant didn't even appear in a later `GROUP BY`, not just its child row).
+- `$queryRaw`/`$executeRaw` — tagged-template only, never string concatenation (auto-parameterized, SQL-injection safe).
+- ⚠️ **A real database persists across every run, forever** — unlike `Store<T>`'s `Map` (wiped on every restart). Confusing-looking accumulating duplicate rows across repeated script runs were exactly this (Durability, the "D" in ACID), not a code bug — needed a full `TRUNCATE` to get a trustworthy clean-state test.
+- Top-level `await` needs an ESM-flavored `module` setting; these CommonJS-based folders wrap in `async function main() { ... } main();` instead (recap the IIFE pattern from Phase 5's raw-http days).
+- A browser can't "open" a raw Postgres port — only HTTP. `npx prisma studio` is the actual GUI tool for eyeballing data in a browser (pgAdmin is the same idea, a real web app that also speaks Postgres on the backend).
+
+**Day 3 — `$extends` + real RLS (procIq's actual mechanism, made real for the first time):**
+```sql
+-- hand-written into an empty `prisma migrate dev --create-only` migration — Prisma has no schema syntax for policies
+ALTER TABLE "Org" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Org" FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON "Org"
+  USING (tenant_id = current_setting('app.tenant_id', true)::text);
+```
+- ⚠️ **Real bug hit, root-caused properly: superusers bypass RLS unconditionally, no exception.** `FORCE ROW LEVEL SECURITY` only forces RLS onto a *non-superuser* table owner — a superuser (the practice DB's default `postgres` connection) never has RLS applied, full stop. This directly explains *why* Day 48's three-role pattern insists the app role is deliberately non-superuser — not organizational tidiness, a hard requirement. Fix: created a real non-superuser role (`learning_app`, ordinary `GRANT`s, no superuser bit) and pointed the query-side client at it via `new PrismaClient({ datasourceUrl: "..." })` (per-instance override, `.env`/migrations stayed on the `postgres` superuser since DDL like `CREATE POLICY` needs elevated privilege).
+- ⚠️ **The originally-taught `$extends` recipe (wrap every query in a `$transaction` that calls `set_config`, then `return query(args)`) does not actually work as taught** — verified empirically with an isolated test, not assumed: `set_config` inside `tx` is real and correctly readable via `tx.$queryRaw`, and `tx.org.findMany()` correctly sees it — but `query(args)` (the extension's generic continuation, bound to the *outer* client) runs on a **different connection** and never sees the transaction-scoped setting. Corrected, proven-working pattern: an explicit `withTenant(tenantId, (tx) => tx.org.findMany(...))` helper — every call site opens its own transaction and receives `tx` directly, rather than trusting an "invisible" wrapped client to inherit it.
+- Proved real tenant isolation empirically: querying as Acme returns only Acme's org; as Globex, only Globex's — enforced by Postgres itself, not application filtering.
+- Proved real fail-closed empirically: querying the same `learning_app`-connected client **without ever calling `set_config`** (skip `withTenant` entirely, call `prisma.org.findMany()` directly) returns `[]` — genuine proof of Day 48's reasoning, not just words this time.
+- ⚠️ **`""` (empty string) is not `NULL`** — both happen to produce zero matching rows here, but for different reasons: `tenant_id = ''` is a real, concrete comparison that simply never matches; `tenant_id = NULL` is SQL's three-valued logic — a comparison against NULL is always `UNKNOWN`, treated as "exclude this row" regardless of what `tenant_id` actually holds. `current_setting(..., true)` returning genuine `NULL` when nothing was ever set is precisely why fail-closed works — reproducing it needs the setting truly unset, not set to `""`.
+
+**Backend:** every atom this module is procIq's real mechanism, not an analogy — `@relation`/`enum`/migrations mirror `libs/db/prisma/schema.prisma` directly; `PrismaClientKnownRequestError` codes are the real errors procIq's services catch; the corrected `withTenant` pattern is functionally the same shape as `connection.service.ts`'s real two-client, transaction-scoped `set_config` approach (this session's version needed a hand-verified fix to actually match what procIq's real code presumably does correctly, likely via a newer Prisma version or a subtly different wiring — worth remembering the *concept* transfers even though this exact code needed correcting).
+
+*Next: Phase 5 continues — Module 44, NestJS Framework (the largest module).*
