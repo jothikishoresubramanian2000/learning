@@ -24,7 +24,9 @@ const sections = [
       "EVERY new term/keyword/acronym gets taught in depth BEFORE a task uses it. No unexplained term, ever.",
       "Teaching demo code != task code — always a fresh scenario for the demo, never reuse it as the task itself (exception: deliberate 'rebuild the same thing in a new tool' modules, e.g. JS-to-TS rebuilds — that reuse is the point).",
       "Every atom explanation needs its OWN code snippet next to the prose — a paragraph of reasoning with no code attached is not acceptable, even for a one-line-feeling concept.",
+      "When a task set requires CONNECTING multiple concepts together (not just applying one in isolation — e.g. NestJS controller+service+module all wired to each other), isolated per-atom snippets aren't enough on their own. After the atom teaching and before the task list, give one small, complete, end-to-end mini example wiring everything together, in a FRESH scenario (different from both the atom demos and the actual task domain). Understanding each piece doesn't automatically teach how the pieces connect — that's its own skill and needs its own example.",
       "Write notes for EVERY completed module into js_learning_notes.md — Concept → Syntax → example → gotchas → backend/procIq use. Never skipped. For multi-day modules, write ONE consolidated entry once the whole module (all days/parts) is done, not per-day.",
+      "ALSO (standing rule from Module 44 onward, not retroactive): write/update a separate, very ELABORATE, beginner-style NOTES.md living INSIDE that module's own folder (e.g. phase5_production/44_nestjs/NOTES.md) — a second file alongside js_learning_notes.md's concise crux, not a replacement. Update it incrementally as each day/part completes, don't wait for the whole module. Required ingredients: a 'what I learned today' journal recap per day; EVERY line of real code explained in plain words; EVERY field inside every object literal explained individually (what does `provide` do, what does `inject` do, how do they connect); simple examples embedded directly in the notes, not just references; a full end-to-end trace of one real example when multiple pieces interlock (e.g. 'one request, start to finish, file by file'); a gotchas section. Size is explicitly not a concern — can be very large.",
       "Go strictly module by module, skip NO atom even if tiny. When he finds a missing atom (or a task turns out to require something never taught), add it to the roadmap + notes as a found-gap atom and teach it properly.",
       "Update SESSION_HANDOFF.md section 4 (position) + learning_schedule.md (tick [x]) as each day/module completes, in the same turn as finishing it.",
     ],
@@ -65,6 +67,7 @@ const sections = [
       "One port, one process — he often runs a task's dev server live in his OWN terminal (tsx). Check `ss -ltnp | grep <port>` / `ps -p <pid>` before trying to bind or reuse the same port yourself; don't kill his running process.",
       "A browser can only talk HTTP — it cannot 'open' a raw Postgres port (or Redis, etc.). Use `npx prisma studio`, `psql`, or a real HTTP tool (pgAdmin) to inspect a database, never a browser URL bar.",
       "Module system quirks: 'module: nodenext' resolves CJS/ESM per-file from the nearest package.json's 'type' field + forbids TS from silently rewriting import syntax under 'verbatimModuleSyntax'. Prefer explicit 'module: commonjs' + esModuleInterop for these folders — simpler, consistent, matches most of this repo already.",
+      "NestJS specifically: do NOT run it with `npx tsx file.ts` like every other module so far — Nest's DI reads TypeScript's emitDecoratorMetadata output, which tsx/esbuild doesn't fully replicate, so constructor-injected providers come back silently undefined at runtime (no compile error, no obvious crash cause). Use `npm run start` / `npm run start:dev` (Nest's own CLI, set up correctly by `nest new`) instead.",
     ],
   },
   {
@@ -77,6 +80,7 @@ const sections = [
       "frontend-roadmap.md — FE track after backend; ends with Phase 11 (purveo-app gap-closing techniques) + Phase 12/Module 59 (Design Patterns, BE+FE together).",
       "casual_tasks/ — ad hoc practice, see convention above.",
       "phase3_projects/, phase4_typescript/, phase5_production/ — module task folders, one subfolder per module.",
+      "<module folder>/NOTES.md — elaborate, beginner-style per-module notes (Module 44 onward), alongside js_learning_notes.md's concise crux.",
     ],
   },
 ];
