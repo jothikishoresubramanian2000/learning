@@ -123,8 +123,8 @@ Modules 1—12 completed: Introduction, Variables, Data Types, Operators, Type C
 ### M44 — NestJS Framework (7 days — largest)
 - [x] **Day 52** — Why Nest, bootstrap, modules (global/dynamic `forRoot`) ✅
 - [x] **Day 53** — Controllers + routing + **Dependency Injection** (providers, custom tokens, `@Inject`) ✅
-- [ ] **Day 54** — Decorators built-in + **custom** (`SetMetadata`, `createParamDecorator`), `reflect-metadata`, `Reflector`
-- [ ] **Day 55** — DTOs + validation (`class-validator/transformer`, `ValidationPipe`), Pipes
+- [x] **Day 54** — Decorators built-in + **custom** (`SetMetadata`, `createParamDecorator`), `reflect-metadata`, `Reflector` ✅
+- [x] **Day 55** — DTOs + validation (`class-validator/transformer`, `ValidationPipe`), Pipes ✅
 - [ ] **Day 56** — **Guards** (`CanActivate`, `APP_GUARD`) + **Interceptors** (RxJS `Observable`, `APP_INTERCEPTOR`)
 - [ ] **Day 57** — **Exception Filters** (`@Catch`, error envelope) + **Middleware** + lifecycle hooks
 - [ ] **Day 58** — **WebSocket Gateways** + Swagger docs; study `apps/spine/src/users/` end-to-end

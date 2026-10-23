@@ -322,8 +322,348 @@ visible at once:
    Nest — which converts it into the actual HTTP response body sent back to whoever made
    the request.
 
+---
+
+## Day 54 — Custom Decorators, Metadata, and Guards
+
+### What I learned today
+
+So far every decorator I used (`@Controller`, `@Get`, `@Param`, `@Injectable`...) was one
+Nest already built for me. Today: how to build MY OWN decorators, and how Nest can read
+"tags" I stick on a route from a completely different class (a Guard) — which is the
+actual mechanism behind things like "only admins can call this route."
+
+### `SetMetadata` — sticking a label on a route, readable later
+
+```ts
+export const AdminAction = (action: string) => SetMetadata("action", action)
+```
+- `SetMetadata(key, value)` is a function Nest gives you. Calling it returns a decorator —
+  i.e. calling `SetMetadata(...)` doesn't itself label anything; it HANDS BACK a labeler
+  you then use with `@`.
+- `"action"` is the KEY — like the `provide` token from Day 53, just for metadata instead
+  of DI. It's a name tag for "where is this piece of information stored," not the data
+  itself.
+- `action` (the function's own parameter) is the VALUE actually stored under that key.
+  Whatever text you pass in when you write `@AdminAction("delete-user")` becomes this
+  value.
+- `AdminAction` is just MY OWN NAME for this — a thin wrapper so I write
+  `@AdminAction("delete-user")` instead of the more awkward
+  `@SetMetadata("action", "delete-user")` directly on every route. Both do the exact same
+  thing; this is purely a readability shortcut I built myself.
+- Important: `SetMetadata` does NOT run any logic, check anything, or block anything. It
+  only ATTACHES data to the method, invisibly, for something else to read later. By
+  itself, a route tagged `@AdminAction("delete-user")` behaves identically to an untagged
+  one — the tag does nothing until a Guard goes looking for it (next section).
+
+### `reflect-metadata` — what makes attaching/reading metadata possible at all
+
+Normal JavaScript has no built-in way to attach arbitrary extra data to a class or method
+and read it back later — a function is just a function. `reflect-metadata` is a library
+Nest depends on (installed automatically, imported once at the very top of `main.ts`) that
+adds exactly this ability to the language: "attach a labeled piece of data to this
+specific class/method, and look it up again later, given the same key and the same
+class/method." `SetMetadata` and `Reflector.get` (below) are both just a friendlier Nest
+wrapper around this underlying reflect-metadata mechanism — Nest didn't invent the
+capability, it's standing on top of this library.
+
+### `Reflector` — reading the label back out, inside a Guard
+
+```ts
+@Injectable()
+export class ActionGuard implements CanActivate {
+  constructor(private reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    const action = this.reflector.get<string>("action", context.getHandler())
+    console.log(`This route has action: ${action}`)
+    return true
+  }
+}
+```
+- `@Injectable()` — same meaning as always: Nest is allowed to construct this class and
+  inject things into it.
+- `implements CanActivate` — a TypeScript contract (an `interface`, like Module 32's
+  interfaces) saying "this class promises to have a `canActivate` method with this exact
+  shape." This is what makes Nest recognize this class as usable with `@UseGuards(...)`.
+- `constructor(private reflector: Reflector)` — ordinary type-based dependency injection
+  (Day 53's mechanism) — `Reflector` is a real class Nest provides, so no `@Inject(token)`
+  needed, the type itself is enough.
+- `canActivate(context: ExecutionContext): boolean` — Nest calls THIS method automatically
+  for every request that hits a route guarded by this Guard, BEFORE the route's own method
+  runs. `context` is a wrapper object giving access to the current request. Returning
+  `true` means "allow this request through to the actual route handler." Returning `false`
+  would block it (not used yet — this Guard only logs, doesn't actually block anything).
+- `context.getHandler()` — "give me a reference to the exact route method that's about to
+  run" (e.g. the actual `adminaction` function object, not a copy or a description of it).
+- `this.reflector.get<string>("action", context.getHandler())` — "look up whatever was
+  stored under the key `'action'` on THIS SPECIFIC method, using `SetMetadata`." The
+  `<string>` is just telling TypeScript what type to expect back (same "trust me" caveat
+  as every other type annotation — nothing really checks it). If that route was never
+  tagged with `@AdminAction(...)`, this returns `undefined` instead of crashing.
+- So the full chain: `@AdminAction("delete-user")` on a route → stores `"delete-user"`
+  under key `"action"` on that specific method, using reflect-metadata underneath → later,
+  `ActionGuard.canActivate` runs for that same route (because of `@UseGuards(ActionGuard)`
+  on it) → asks `Reflector` "what's under `'action'` on this exact method" → gets back
+  `"delete-user"` → logs it.
+
+### `createParamDecorator` — building my own `@Param`/`@Query`-style decorator
+
+```ts
+export const RequestId = createParamDecorator((data: string, ctx: ExecutionContext) => {
+  const request = ctx.switchToHttp().getRequest();
+  return request.headers[data] ?? "unknown"
+});
+```
+- `createParamDecorator(fn)` — a Nest function that takes YOUR function and turns it into
+  a usable parameter decorator, so you can write `@RequestId("x-request-id") id: string`
+  as a method parameter, the exact same way you'd write `@Param("amount")`.
+- The function you hand it always gets two things: `data` (whatever text YOU write inside
+  the parentheses when using it — e.g. `"x-request-id"`) and `ctx` (the same kind of
+  request-wrapper object the Guard got, here called `ExecutionContext` too).
+- `ctx.switchToHttp()` — `ExecutionContext` is generic enough to represent other kinds of
+  entry points too (WebSockets, microservices — not covered yet), so this line says "I
+  specifically want the HTTP version of this request," and `.getRequest()` then hands back
+  the actual underlying request object (same object Express would call `req`).
+- `request.headers[data]` — `request.headers` is a plain object of all HTTP headers sent
+  with the request, lowercased keys. `data` here is `"x-request-id"` (whatever text was
+  passed when the decorator was used), so this reads that one specific header's value.
+- `?? "unknown"` — if that header wasn't sent at all (`undefined`), fall back to the
+  string `"unknown"` instead.
+- Using it: `giveid(@RequestId("x-request-id") id: string) {...}` — Nest calls the
+  function above automatically, right before `giveid` runs, and whatever it RETURNS
+  becomes the actual value of `id` inside `giveid`'s body. Exactly the same mechanical
+  pattern as `@Param`/`@Query`/`@Body`, except I wrote the extraction logic myself instead
+  of Nest providing it.
+
+### The colon (`:`) in a route path — what it actually means
+
+```ts
+@Get(":id")
+@Get("combined")
+```
+- A route path is split into segments by `/`. A plain segment like `"combined"` only
+  matches that EXACT text in the URL.
+- A segment starting with `:` (like `:id`, or `:logid`, or `:ruleid` — the NAME after the
+  colon is entirely my own choice, Nest doesn't care what I call it) is a PLACEHOLDER —
+  "this segment can be literally any text, and whatever it is, make it available under
+  this name via `@Param(nameAfterColon)`." So `:id` and `:logid` behave 100% identically
+  as routing rules — the only difference is which name you'd use to read the value back
+  out with `@Param(...)`. `/audit/:id` matches `/audit/108`, `/audit/combined`,
+  `/audit/anything-at-all` — ONE segment, any text.
+- This is exactly why today's ordering bug (next section) happened: `:id` isn't "a number
+  placeholder" or anything restrictive — it's "literally any single path segment,"
+  including text that happens to also be a real, separate, literal route.
+
+### The bug I hit: wildcard route swallowing a literal route
+
+My first version had, in this order:
+```ts
+@Get(":id")
+giveid(@RequestId("x-request-id") id: string) { ... }
+
+@Get("combined")
+combined(...) { ... }
+```
+Calling `GET /audit/combined` returned a response, but the Guard's `console.log` never
+printed the `combined` route's own tag — proof `giveid()` ran instead of `combined()`,
+even though `combined()` also matches `/audit/combined`.
+
+**Why:** Nest (like Express underneath it) checks routes in the exact order they were
+REGISTERED, top to bottom, and uses the FIRST one that matches — it does not look ahead
+for a "more specific" match first. Since `:id` matches ANY single segment, `/audit/:id`
+being declared first means it swallows `/audit/combined` too, before `/audit/combined`
+ever gets a chance to be checked.
+
+**The fix:** declare the literal, specific route BEFORE the wildcard one:
+```ts
+@Get("combined")
+combined(...) { ... }
+
+@Get(":id")
+giveid(...) { ... }
+```
+Now `/audit/combined` is checked first, matches exactly, and runs — `:id` only ever
+catches whatever's left over (any segment that ISN'T one of the literal routes declared
+above it).
+
+### Full request trace — `GET /audit/combined` (header `x-request-id: xyz-999`), after the fix
+
+1. Request arrives at `GET /audit/combined` with header `x-request-id: xyz-999`.
+2. Nest's router checks routes top to bottom: `/audit` (no match, extra segment) →
+   `/audit/combined` (exact text match — STOPS here, this route wins).
+3. This route has `@UseGuards(ActionGuard)` attached, so before `combined()` itself runs,
+   Nest constructs/reuses `ActionGuard` and calls its `canActivate(context)`.
+4. Inside `canActivate`, `context.getHandler()` points at `combined` specifically;
+   `this.reflector.get("action", ...)` looks up the metadata stored by `@AdminAction`
+   on THIS method and gets back `"remove-user"`; it's logged; `true` is returned, so the
+   request is allowed through.
+5. Nest now resolves `combined`'s own parameter: `@RequestId("x-request-id")` runs its
+   function, reads `request.headers["x-request-id"]`, gets `"xyz-999"`.
+6. `combined`'s body runs: `return \`Request id is ${id}\`` → `"Request id is xyz-999"`.
+7. That string becomes the HTTP response body sent back.
+
+---
+
+## Day 55 — DTOs, `class-validator`, `class-transformer`, `ValidationPipe`
+
+### What I learned today
+
+Every route so far trusted whatever data arrived — nothing actually checked that a
+request body had the right shape or sane values. Today: a real mechanism for rejecting
+bad input automatically, before my own route code ever runs, built from a DTO class +
+rule-decorators + two separate conversion steps I'd been quietly conflating as one.
+
+### What a DTO is, and why it has to be a CLASS, not an interface
+
+A DTO (Data Transfer Object) is a plain class describing the shape of data moving in or
+out — no real logic, just properties.
+
+```ts
+export class OrderDto {
+  item: string
+  quantity: number
+  price: number
+}
+```
+
+I already know `interface` from Module 32 and it looks like it'd do the same job. The
+difference: an `interface` is a TypeScript-only concept — it's completely erased by the
+time the code actually runs (compiled away to nothing). A `class` is NOT erased — it
+still exists as a real, working thing while the program runs. Validation needs something
+real at runtime to attach rules to and check against, so it has to be a class.
+
+### `class-validator` — decorators that attach a rule to one field
+
+```ts
+import { IsString, IsInt, Min } from "class-validator";
+
+export class OrderDto {
+  @IsString()
+  item: string
+
+  @IsInt()
+  @Min(1)
+  quantity: number
+
+  @IsInt()
+  @Min(0)
+  price: number
+}
+```
+
+- `@IsString()`, `@IsInt()`, `@Min(n)` are decorators `class-validator` already built.
+  Same underlying mechanism as Day 54's `SetMetadata` — writing `@IsInt()` above
+  `quantity` doesn't check anything by itself at that moment; it just ATTACHES a rule
+  ("this field must be a whole number") as metadata on that property, for something else
+  to read and check later.
+- Several decorators can stack on one property (`@IsInt()` + `@Min(1)` on `quantity`) —
+  ALL of them must pass, not just one.
+- The thing that actually reads this metadata and checks real data against it is
+  `class-validator`'s own `validate()` function, or (inside Nest) the `ValidationPipe`
+  below — never the decorators themselves.
+
+### Two separate conversions I was conflating — the full JSON round trip
+
+This was my big confusion point today, worth writing out in full because it's a pattern
+that comes up everywhere, not just here.
+
+**JSON is a TEXT FORMAT (a string) — never an in-memory object.** A JS object like
+`{ item: "Keyboard", quantity: 2 }` living in memory is NOT JSON — it only becomes JSON
+once converted into quoted text. The two things that convert between them are exact
+opposites of each other:
+
+- `JSON.stringify(obj)` — real JS object (in memory) → JSON text (a string). Used on the
+  SENDING side, e.g. in my `main.ts` test call:
+  `body: JSON.stringify({ item: "Keyboard", quantity: 2, price: 1500 })` — turns that
+  object into the string `'{"item":"Keyboard","quantity":2,"price":1500}'`, which is what
+  actually travels over the network as the request body.
+- `JSON.parse(text)` — JSON text (a string) → real plain JS object. Run automatically by
+  `express.json()` middleware (recap Module 41) on the RECEIVING side, but ONLY if the
+  request's `Content-Type: application/json` header says to. The header is just a LABEL
+  the client attaches saying "treat my body text as JSON" — it does no parsing itself;
+  `express.json()` is the thing that reads that label and decides whether to call
+  `JSON.parse()` at all. No header (or wrong header) → body stays unparsed → `req.body`
+  ends up empty.
+
+**That parsed plain object is still NOT a class instance.** This is the SECOND, separate
+conversion, and it's `class-transformer`'s job, not `JSON.parse`'s:
+
+```ts
+import { plainToInstance } from "class-transformer";
+
+const raw = { item: "Keyboard", quantity: 2, price: 1500 }; // already a plain object
+const dto = plainToInstance(OrderDto, raw);                  // now a REAL OrderDto instance
+```
+`plainToInstance` never touches raw text and does no JSON parsing at all — it only takes
+an object that ALREADY exists (from step above) and copies its fields into a brand-new
+real instance of the named class. Before this, `raw instanceof OrderDto` is `false`;
+after, `dto instanceof OrderDto` is `true`. This step exists because `class-validator`'s
+decorators only work on real class instances — a plain object has no class to look
+decorators up on.
+
+**Full chain, one request, both conversions in order:**
+`JS object → JSON.stringify → JSON text (travels over network) → express.json() sees
+Content-Type header, runs JSON.parse → plain JS object (req.body) → plainToInstance →
+real class instance → class-validator's validate() checks the decorators on it.`
+
+### `ValidationPipe` — wiring the DTO decorators + the transformer into Nest automatically
+
+A Pipe sits between "data arrived" and "your route method runs" — it can transform data,
+or block the request entirely by throwing.
+
+```ts
+@Post()
+createOrder(@Body(new ValidationPipe()) body: OrderDto) {
+  return `Order placed: ${body.quantity} x ${body.item}`
+}
+```
+
+What Nest does, in order, for an incoming `POST /orders`:
+1. Reads the raw request body (already parsed into a plain object by `express.json()`,
+   assuming the `Content-Type` header was set correctly).
+2. Because `@Body(new ValidationPipe())` is used instead of bare `@Body()`, Nest runs
+   that plain object through the `ValidationPipe` BEFORE `createOrder` executes.
+3. Internally, the Pipe does exactly the two conversions above: `plainToInstance` first,
+   then `class-validator`'s `validate()` against every decorator on `OrderDto`.
+4. All rules pass → the real, validated `OrderDto` instance becomes `body` inside
+   `createOrder` — my code runs normally.
+5. Any rule fails → `createOrder` is NEVER called. Nest automatically responds with
+   `400 Bad Request` and a message describing exactly which field(s) failed and why —
+   no code of mine involved in producing that error response.
+
+### Real proof — what happened when `Content-Type` was missing
+
+My own `main.ts` test call for `/orders` originally had no `Content-Type` header. Real
+result:
+```
+{"message":["item must be a string","quantity must not be less than 1",
+"quantity must be an integer number","price must not be less than 0",
+"price must be an integer number"],"error":"Bad Request","statusCode":400}
+```
+EVERY single field failed, not just one — because without the header, `express.json()`
+never parsed the body, so `plainToInstance` built an `OrderDto` where `item`, `quantity`,
+and `price` were all `undefined`. `undefined` fails `@IsString()`, fails `@IsInt()`, and
+fails `@Min(n)` too (comparing `undefined` against a number is never true) — hence every
+rule on every field failing at once. This is a good diagnostic pattern to remember: if
+EVERY field fails validation simultaneously, suspect the body never actually arrived
+parsed, rather than suspecting the data itself.
+
+**Fix:** add `headers: { "Content-Type": "application/json" }` to the fetch call —
+exactly what the earlier `res5` (pricing) test call already had, which is why that one
+worked and this one initially didn't.
+
 ### Gotchas worth remembering from this module
 
+- **If EVERY field in a `ValidationPipe` error fails at once, suspect the body never got
+  parsed at all (missing/wrong `Content-Type` header)** before suspecting the actual
+  data — `undefined` fails every `class-validator` rule simultaneously, which looks like
+  "everything is wrong" but usually means "nothing arrived."
+- **`JSON.stringify`/`JSON.parse` and `plainToInstance` are TWO separate, unrelated
+  conversions, not one** — stringify/parse convert between TEXT and a plain object;
+  `plainToInstance` converts between a plain object and a real CLASS INSTANCE. Mixing
+  these up (assuming parsing a JSON string already gives you a validated class instance)
+  is an easy, very natural mistake.
 - **`npx tsx` breaks NestJS dependency injection.** It doesn't fully support
   `emitDecoratorMetadata` (the exact mechanism in the "how DI actually works"
   walkthrough above, step 3) — so constructor-injected things silently come back
@@ -337,3 +677,13 @@ visible at once:
   checked against what's really stored there** — TypeScript trusts whatever annotation
   you write; it has no way to trace a string token back to its real registered value.
   Same "trust me, no real check" family as `as`/M32b's assertions.
+- **A wildcard path segment (`:id`) matches ANY single segment, including text that's
+  also a real literal route** (`"combined"`) — and since routes are matched in
+  REGISTRATION ORDER (not by specificity), a wildcard route declared before a literal
+  route permanently steals its requests. Literal/specific routes must be declared BEFORE
+  wildcard routes that could also match the same text.
+- **`SetMetadata`/`@Inject`-style tags do nothing by themselves** — they only attach
+  inert data (via `reflect-metadata`) for something else (a `Reflector`, inside a Guard)
+  to go read later. Tagging a route and never reading the tag back has zero runtime
+  effect — same "label vs. logic" split as a comment: the tag doesn't enforce anything on
+  its own.
