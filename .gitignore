@@ -25,3 +25,9 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# auto-generated AI agent/tool skill scaffolding (e.g. from `npx prisma`)
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
